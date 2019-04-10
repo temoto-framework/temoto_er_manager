@@ -159,6 +159,8 @@ void ERManager::update(const ros::TimerEvent&)
 void ERManager::loadCb( temoto_er_manager::LoadExtResource::Request& req,
                         temoto_er_manager::LoadExtResource::Response& res)
 {
+  TEMOTO_DEBUG_STREAM("Received a request: " << req);
+
   // Validate the action command.
   if (req.action == action::ROS_EXECUTE) //|| action == action::SYS_EXECUTE)
   {
