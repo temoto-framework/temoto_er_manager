@@ -4,7 +4,6 @@
 #include "temoto_core/common/base_subsystem.h"
 #include "temoto_core/rmp/resource_manager.h"
 
-#include "temoto_nlp/base_task/base_task.h"
 #include "temoto_er_manager/temoto_er_manager_services.h"
 #include <memory> //unique_ptr
 
@@ -18,7 +17,7 @@
 namespace temoto_er_manager
 {
 
-template <class OwnerTask>
+template <class OwnerAction>
 class ERManagerInterface : public temoto_core::BaseSubsystem
 {
 public:
@@ -32,14 +31,14 @@ public:
 
   /**
    * @brief initialize
-   * @param task
+   * @param action
    */
-  void initialize(OwnerTask* task)
+  void initialize(OwnerAction* action)
   {
-    owner_instance_ = task;
-    initializeBase(task);
-    log_group_ = "interfaces." + task->getPackageName();
-    name_ = task->getName() + "/external_resource_manager_interface";
+    owner_instance_ = action;
+    initializeBase(action);
+    log_group_ = "interfaces." + action->getName();
+    name_ = action->getName() + "/external_resource_manager_interface";
 
     resource_manager_ = std::unique_ptr<temoto_core::rmp::ResourceManager<ERManagerInterface>>(
                         new temoto_core::rmp::ResourceManager<ERManagerInterface>(name_, this));
@@ -201,7 +200,7 @@ public:
   /**
    * @brief registerUpdateCallback
    */
-  void registerUpdateCallback( void (OwnerTask::*callback )(bool))
+  void registerUpdateCallback( void (OwnerAction::*callback )(bool))
   {
     update_callback_ = callback;
   }
@@ -220,8 +219,8 @@ private:
   std::vector<temoto_er_manager::LoadExtResource> allocated_external_resources_;
   std::unique_ptr<temoto_core::rmp::ResourceManager<ERManagerInterface>> resource_manager_;
 
-  void(OwnerTask::*update_callback_)(bool) = NULL;
-  OwnerTask* owner_instance_;
+  void(OwnerAction::*update_callback_)(bool) = NULL;
+  OwnerAction* owner_instance_;
 
   /**
    * @brief validateInterface
@@ -230,7 +229,7 @@ private:
   {
     if(!resource_manager_)
     {
-      throw CREATE_ERROR(error::Code::UNINITIALIZED, "Interface is not initalized.");
+      throw CREATE_ERROR(temoto_core::error::Code::UNINITIALIZED, "Interface is not initalized.");
     }
   }
 };

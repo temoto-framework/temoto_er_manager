@@ -38,5 +38,4 @@ add_executable(temoto_er_manager src/temoto_er_manager.cpp
 add_dependencies(temoto_er_manager ${catkin_EXPORTED_TARGETS} ${${PROJECT_NAME}_EXPORTED_TARGETS})
 target_link_libraries( temoto_er_manager 
   ${catkin_LIBRARIES}
-  temoto_core_components
 )
