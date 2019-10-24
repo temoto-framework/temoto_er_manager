@@ -5,7 +5,6 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED
   roscpp
   roslib
-  genmsg
   std_msgs
   temoto_core
 )
@@ -23,9 +22,8 @@ generate_messages(
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS temoto_core std_msgs roscpp roslib
+  CATKIN_DEPENDS roscpp roslib std_msgs temoto_core
 )
-
 
 include_directories(
   include
@@ -35,7 +33,15 @@ include_directories(
 add_executable(temoto_er_manager src/temoto_er_manager.cpp
 	                               src/temoto_er_manager_node.cpp
 )
+
 add_dependencies(temoto_er_manager ${catkin_EXPORTED_TARGETS} ${${PROJECT_NAME}_EXPORTED_TARGETS})
 target_link_libraries( temoto_er_manager 
   ${catkin_LIBRARIES}
 )
+
+install(TARGETS temoto_er_manager
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY include/${PROJECT_NAME}/
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
