@@ -2,7 +2,7 @@
 #define TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_SERVICES_H
 
 #include <string>
-#include "temoto_core/rmp/resource_manager_services.h"
+#include "temoto_core/trr/resource_registrar_services.h"
 #include "temoto_er_manager/LoadExtResource.h"
 
 namespace temoto_er_manager

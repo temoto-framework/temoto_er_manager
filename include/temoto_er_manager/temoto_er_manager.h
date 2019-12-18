@@ -1,7 +1,7 @@
 #ifndef TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_H
 #define TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_H
 
-#include "temoto_core/rmp/resource_manager.h"
+#include "temoto_core/trr/resource_registrar.h"
 #include "temoto_core/common/base_subsystem.h"
 #include "temoto_er_manager/temoto_er_manager_services.h"
 #include <stdio.h> //pid_t TODO: check where pid_t actually is
@@ -48,7 +48,7 @@ namespace temoto_er_manager
 			ros::NodeHandle nh_;
 
 			// Resource management protocol
-			temoto_core::rmp::ResourceManager<ERManager> resource_manager_;
+			temoto_core::trr::ResourceRegistrar<ERManager> resource_registrar_;
 
 			// Listens for calls to start or kill processes
 			//ros::ServiceServer spawn_kill_srv_;

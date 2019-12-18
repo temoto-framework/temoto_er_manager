@@ -11,7 +11,7 @@ namespace temoto_er_manager
 {
 using namespace temoto_core;
 
-ERManager::ERManager() : resource_manager_(srv_name::MANAGER, this)
+ERManager::ERManager() : resource_registrar_(srv_name::MANAGER, this)
 {
   class_name_ = __func__;
   subsystem_name_ = "temoto_er_manager";
@@ -19,7 +19,7 @@ ERManager::ERManager() : resource_manager_(srv_name::MANAGER, this)
   log_group_ = "temoto_er_manager";
   error_handler_ = error::ErrorHandler(subsystem_code_, log_group_);
 
-  resource_manager_.addServer<temoto_er_manager::LoadExtResource>( srv_name::SERVER
+  resource_registrar_.addServer<temoto_er_manager::LoadExtResource>( srv_name::SERVER
                                                                  , &ERManager::loadCb
                                                                  , &ERManager::unloadCb);
   TEMOTO_INFO("Process manager is ready.");
@@ -123,8 +123,8 @@ void ERManager::update(const ros::TimerEvent&)
 
       // TODO: send error information to all related connections
       temoto_core::ResourceStatus srv;
-      srv.request.resource_id = proc_it->second.response.rmp.resource_id;
-      srv.request.status_code = rmp::status_codes::FAILED;
+      srv.request.resource_id = proc_it->second.response.trr.resource_id;
+      srv.request.status_code = trr::status_codes::FAILED;
       std::stringstream ss;
       ss << "The process with pid '" << proc_it->first << "' has stopped.";
       srv.request.message = ss.str();
@@ -149,7 +149,7 @@ void ERManager::update(const ros::TimerEvent&)
 
   for (auto& srv : statuses_to_send)
   {
-    resource_manager_.sendStatus(srv);
+    resource_registrar_.sendStatus(srv);
 
     // TODO: Normally unload command should come from upper chain, howerver, when sending status is unsucessful, we should unload the resource manually?
    // running_processes_.erase(proc_it++);
@@ -229,14 +229,14 @@ void ERManager::loadCb( temoto_er_manager::LoadExtResource::Request& req,
   }
 
   // Fill response
-  res.rmp.code = rmp::status_codes::OK;
-  res.rmp.message = "Request added to the loading queue.";
+  res.trr.code = trr::status_codes::OK;
+  res.trr.message = "Request added to the loading queue.";
 }
 
 void ERManager::unloadCb(temoto_er_manager::LoadExtResource::Request& req,
                               temoto_er_manager::LoadExtResource::Response& res)
 {
-  TEMOTO_DEBUG("Unloading resource with id '%ld' ...", res.rmp.resource_id);
+  TEMOTO_DEBUG("Unloading resource with id '%ld' ...", res.trr.resource_id);
 
   // Lookup the requested process by its resource id.
   waitForLock(running_mutex_);
@@ -249,23 +249,23 @@ void ERManager::unloadCb(temoto_er_manager::LoadExtResource::Request& req,
   if (proc_it != running_processes_.end())
   {
     unloading_processes_.push_back(proc_it->first);
-    res.rmp.code = 0;
-    res.rmp.message = "Resource added to unload queue.";
-    TEMOTO_DEBUG("Resource with id '%ld' added to unload queue.", res.rmp.resource_id);
+    res.trr.code = 0;
+    res.trr.message = "Resource added to unload queue.";
+    TEMOTO_DEBUG("Resource with id '%ld' added to unload queue.", res.trr.resource_id);
   }
   else if (failed_proc_it != failed_processes_.end())
   {
     failed_processes_.erase(failed_proc_it);
-    res.rmp.code = 0;
-    res.rmp.message = "Resource unloaded.";
-    TEMOTO_DEBUG("Unloaded failed resource with id '%ld'.", res.rmp.resource_id);
+    res.trr.code = 0;
+    res.trr.message = "Resource unloaded.";
+    TEMOTO_DEBUG("Unloaded failed resource with id '%ld'.", res.trr.resource_id);
   }
   else
   {
-    TEMOTO_ERROR("Unable to unload reource with resource_id: %ld. Resource is not running nor failed.", res.rmp.resource_id);
+    TEMOTO_ERROR("Unable to unload reource with resource_id: %ld. Resource is not running nor failed.", res.trr.resource_id);
     // Fill response
-    res.rmp.code = rmp::status_codes::FAILED;
-    res.rmp.message = "Resource is not running nor failed. Unable to unload.";
+    res.trr.code = trr::status_codes::FAILED;
+    res.trr.message = "Resource is not running nor failed. Unable to unload.";
   }
   running_mutex_.unlock();
 

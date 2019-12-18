@@ -2,7 +2,7 @@
 #define TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_INTERFACE_H
 
 #include "temoto_core/common/base_subsystem.h"
-#include "temoto_core/rmp/resource_manager.h"
+#include "temoto_core/trr/resource_registrar.h"
 
 #include "temoto_er_manager/temoto_er_manager_services.h"
 #include <memory> //unique_ptr
@@ -38,11 +38,11 @@ public:
     owner_instance_ = action;
     initializeBase(action);
     log_group_ = "interfaces." + action->getName();
-    name_ = action->getName() + "/external_resource_manager_interface";
+    name_ = action->getName() + "/external_resource_registrar_interface";
 
-    resource_manager_ = std::unique_ptr<temoto_core::rmp::ResourceManager<ERManagerInterface>>(
-                        new temoto_core::rmp::ResourceManager<ERManagerInterface>(name_, this));
-    resource_manager_->registerStatusCb(&ERManagerInterface::statusInfoCb);
+    resource_registrar_ = std::unique_ptr<temoto_core::trr::ResourceRegistrar<ERManagerInterface>>(
+                        new temoto_core::trr::ResourceRegistrar<ERManagerInterface>(name_, this));
+    resource_registrar_->registerStatusCb(&ERManagerInterface::statusInfoCb);
   }
 
   /**
@@ -67,14 +67,14 @@ public:
     // Call the server
     try
     {
-//      resource_manager_->template call<temoto_core::LoadSensor>(sensor_manager::srv_name::MANAGER,
+//      resource_registrar_->template call<temoto_core::LoadSensor>(sensor_manager::srv_name::MANAGER,
 //                                                             sensor_manager::srv_name::SERVER,
 //                                                             load_resource_msg);
 
-       resource_manager_->template call<LoadExtResource>( temoto_er_manager::srv_name::MANAGER,
+       resource_registrar_->template call<LoadExtResource>( temoto_er_manager::srv_name::MANAGER,
                                                           temoto_er_manager::srv_name::SERVER,
                                                           load_resource_msg,
-                                                          temoto_core::rmp::FailureBehavior::NONE);
+                                                          temoto_core::trr::FailureBehavior::NONE);
     }
     catch(temoto_core::error::ErrorStack& error_stack)
     {
@@ -123,7 +123,7 @@ public:
 //    try
 //    {
 //      // do the unloading
-//      resource_manager_->unloadClientResource(found_sensor_it->response.rmp.resource_id);
+//      resource_registrar_->unloadClientResource(found_sensor_it->response.trr.resource_id);
 //      allocated_sensors_.erase(found_sensor_it);
 //    }
 //    catch (temoto_core::error::ErrorStack& error_stack)
@@ -163,24 +163,24 @@ public:
 //     * if any resource should fail, just unload it and load it again
 //     * there is a chance that sensor manager gives us better sensor this time
 //     */
-//    if (srv.request.status_code == temoto_core::rmp::status_codes::FAILED)
+//    if (srv.request.status_code == temoto_core::trr::status_codes::FAILED)
 //    {
 //      TEMOTO_WARN("Sensor manager interface detected a sensor failure. Unloading and "
 //                                "trying again");
 //      auto sens_it = std::find_if(allocated_sensors_.begin(), allocated_sensors_.end(),
 //                                  [&](const temoto_core::LoadSensor& sens) -> bool {
-//                                    return sens.response.rmp.resource_id == srv.request.resource_id;
+//                                    return sens.response.trr.resource_id == srv.request.resource_id;
 //                                  });
 //      if (sens_it != allocated_sensors_.end())
 //      {
 //        TEMOTO_DEBUG("Unloading");
-//        resource_manager_->unloadClientResource(sens_it->response.rmp.resource_id);
+//        resource_registrar_->unloadClientResource(sens_it->response.trr.resource_id);
 //        TEMOTO_DEBUG("Asking the same sensor again");
 
 //        // this call automatically updates the response in allocated sensors vec
 //        try
 //        {
-//          resource_manager_->template call<temoto_core::LoadSensor>(sensor_manager::srv_name::MANAGER,
+//          resource_registrar_->template call<temoto_core::LoadSensor>(sensor_manager::srv_name::MANAGER,
 //                                                                 sensor_manager::srv_name::SERVER,
 //                                                                 *sens_it);
 //        }
@@ -217,7 +217,7 @@ public:
 private:
   std::string name_;
   std::vector<temoto_er_manager::LoadExtResource> allocated_external_resources_;
-  std::unique_ptr<temoto_core::rmp::ResourceManager<ERManagerInterface>> resource_manager_;
+  std::unique_ptr<temoto_core::trr::ResourceRegistrar<ERManagerInterface>> resource_registrar_;
 
   void(OwnerAction::*update_callback_)(bool) = NULL;
   OwnerAction* owner_instance_;
@@ -227,7 +227,7 @@ private:
    */
   void validateInterface()
   {
-    if(!resource_manager_)
+    if(!resource_registrar_)
     {
       throw CREATE_ERROR(temoto_core::error::Code::UNINITIALIZED, "Interface is not initalized.");
     }
