@@ -22,6 +22,43 @@ ERManager::ERManager() : resource_registrar_(srv_name::MANAGER, this)
   resource_registrar_.addServer<temoto_er_manager::LoadExtResource>( srv_name::SERVER
                                                                  , &ERManager::loadCb
                                                                  , &ERManager::unloadCb);
+
+  /*
+   * Find the catkin workspace
+   */
+  const std::string current_node_path = ros::package::getPath(ROS_PACKAGE_NAME);
+  std::vector<std::string> current_node_path_tokens;
+  boost::split(current_node_path_tokens, current_node_path, boost::is_any_of("/"));
+
+  // Remove all tokens up to "src" token. TODO: May potentially cause problems
+  // if duplicate "src" tokens are present.
+  bool src_token_found = false;
+  while(!src_token_found)
+  {
+    if (current_node_path_tokens.size() == 0)
+    {
+      break;
+    }
+
+    if(current_node_path_tokens.back() != "src")
+    {
+      current_node_path_tokens.pop_back();
+    }
+    else
+    {
+      current_node_path_tokens.pop_back();
+      src_token_found = true;
+      break;
+    }
+  }
+
+  // Assemble the devel path string
+  for (const auto& token : current_node_path_tokens)
+  {
+    catkin_workspace_devel_path_ += token + "/";
+  }
+  catkin_workspace_devel_path_ += "devel/";
+
   TEMOTO_INFO("Process manager is ready.");
 }
 
@@ -65,8 +102,11 @@ void ERManager::update(const ros::TimerEvent&)
     // Child process
     if (pid == 0)
     {
+      // Refresh the environment variables
+      TEMOTO_DEBUG_STREAM("Sourcing the .../devel/setup.sh ...");
+      system(std::string(". " + catkin_workspace_devel_path_ + "setup.sh").c_str());
+
       // Execute the requested process
-      //  std::cout << "Child is executing a program ..." << std::endl;
       execlp("/bin/bash", "/bin/bash", "-c", cmd.c_str() , (char*)NULL);
       return;
     }

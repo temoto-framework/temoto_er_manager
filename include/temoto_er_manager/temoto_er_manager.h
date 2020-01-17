@@ -40,6 +40,7 @@ namespace temoto_er_manager
       std::map<pid_t, temoto_er_manager::LoadExtResource> running_processes_;
       std::map<pid_t, temoto_er_manager::LoadExtResource> failed_processes_;
       std::vector<pid_t> unloading_processes_;
+      std::string catkin_workspace_devel_path_;
 
       std::mutex loading_mutex_;
       std::mutex unloading_mutex_;
