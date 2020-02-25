@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 2.8.3)
 project(temoto_er_manager)
 add_compile_options(-std=c++11)
 
+option(TEMOTO_ENABLE_TRACING "Use tracer" OFF)
+
+if(TEMOTO_ENABLE_TRACING)
+  add_compile_options(-Denable_tracing)
+endif()
+
 find_package(catkin REQUIRED
   roscpp
   roslib
