@@ -1,3 +1,22 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright 2020 TeMoto Telerobotics
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+/* Author: Veiko Vunder */
+/* Author: Robert Valner */
+
 #include "ros/package.h"
 #include "temoto_er_manager/temoto_er_manager.h"
 #include <stdio.h>
@@ -11,17 +30,13 @@ namespace temoto_er_manager
 {
 using namespace temoto_core;
 
-ERManager::ERManager() : resource_registrar_(srv_name::MANAGER, this)
+ERManager::ERManager() 
+: BaseSubsystem( "temoto_er_manager", error::Subsystem::PROCESS_MANAGER, __func__)
+, resource_registrar_(srv_name::MANAGER, this)
 {
-  class_name_ = __func__;
-  subsystem_name_ = "temoto_er_manager";
-  subsystem_code_ = error::Subsystem::PROCESS_MANAGER;
-  log_group_ = "temoto_er_manager";
-  error_handler_ = error::ErrorHandler(subsystem_code_, log_group_);
-
-  resource_registrar_.addServer<temoto_er_manager::LoadExtResource>( srv_name::SERVER
-                                                                 , &ERManager::loadCb
-                                                                 , &ERManager::unloadCb);
+  resource_registrar_.addServer<LoadExtResource>( srv_name::SERVER
+                                                , &ERManager::loadCb
+                                                , &ERManager::unloadCb);
 
   /*
    * Find the catkin workspace
