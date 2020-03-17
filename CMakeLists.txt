@@ -36,11 +36,16 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(temoto_er_manager src/temoto_er_manager.cpp
-	                               src/temoto_er_manager_node.cpp
+add_executable(temoto_er_manager 
+  src/temoto_er_manager.cpp
+  src/temoto_er_manager_node.cpp
 )
 
-add_dependencies(temoto_er_manager ${catkin_EXPORTED_TARGETS} ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(temoto_er_manager 
+  ${catkin_EXPORTED_TARGETS}
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+)
+
 target_link_libraries( temoto_er_manager 
   ${catkin_LIBRARIES}
 )
@@ -50,4 +55,5 @@ install(TARGETS temoto_er_manager
 )
 
 install(DIRECTORY include/${PROJECT_NAME}/
-        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
