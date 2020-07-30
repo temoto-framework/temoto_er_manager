@@ -14,9 +14,6 @@
  * limitations under the License.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* Author: Veiko Vunder */
-/* Author: Robert Valner */
-
 #ifndef TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_H
 #define TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_H
 
@@ -25,6 +22,7 @@
 #include "temoto_er_manager/temoto_er_manager_services.h"
 #include <stdio.h> //pid_t TODO: check where pid_t actually is
 #include <mutex>
+#include <thread>
 #include <sys/stat.h>
 
 namespace temoto_er_manager
@@ -40,7 +38,9 @@ public:
   void formatResponse(temoto_er_manager::LoadExtResource::Response &res, int code, std::string message);
   void loadCb(temoto_er_manager::LoadExtResource::Request &req, temoto_er_manager::LoadExtResource::Response &res);
   void unloadCb(temoto_er_manager::LoadExtResource::Request &req, temoto_er_manager::LoadExtResource::Response &res);
-  void update(const ros::TimerEvent& e);
+  void resourceLoadLoop();
+  void resourceUnloadLoop();
+  void resourceStatusLoop();
 
 private:
 
@@ -51,6 +51,10 @@ private:
   std::map<pid_t, temoto_er_manager::LoadExtResource> failed_processes_;
   std::vector<pid_t> unloading_processes_;
   std::string catkin_workspace_devel_path_;
+
+  std::thread  resource_loading_thread_;  
+  std::thread  resource_unloading_thread_;
+  std::thread  resource_status_thread_;
 
   std::mutex loading_mutex_;
   std::mutex unloading_mutex_;

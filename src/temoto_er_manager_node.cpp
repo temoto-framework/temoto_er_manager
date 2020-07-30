@@ -10,9 +10,7 @@ int main(int argc, char** argv)
   // Create instance of process manager
   temoto_er_manager::ERManager erm;
 
-  // set up ROS timer to update the temoto_er_manager
-  ros::NodeHandle nh;
-  ros::Timer timer = nh.createTimer(ros::Duration(1), &temoto_er_manager::ERManager::update, &erm);
   ros::spin();
+  
   return 0;
 }

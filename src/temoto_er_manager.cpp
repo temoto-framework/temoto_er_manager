@@ -14,9 +14,6 @@
  * limitations under the License.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* Author: Veiko Vunder */
-/* Author: Robert Valner */
-
 #include "ros/package.h"
 #include "temoto_er_manager/temoto_er_manager.h"
 #include <stdio.h>
@@ -74,21 +71,56 @@ ERManager::ERManager()
   }
   catkin_workspace_devel_path_ += "devel/";
 
+  // Start the load, unload and status monitoring threads
+  resource_loading_thread_ = std::thread(&ERManager::resourceLoadLoop, this);;  
+  resource_unloading_thread_ = std::thread(&ERManager::resourceUnloadLoop, this);;
+  resource_status_thread_ = std::thread(&ERManager::resourceStatusLoop, this);;
+
   TEMOTO_INFO("Process manager is ready.");
 }
 
 ERManager::~ERManager()
 {
+  while (!resource_loading_thread_.joinable())
+  {
+    std::cout << "[" << __func__ << "] " << "waiting for the resource loading thread to finish ..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  resource_loading_thread_.join();
+
+  while (!resource_unloading_thread_.joinable())
+  {
+    std::cout << "[" << __func__ << "] " << "waiting for the resource unloading thread to finish ..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  resource_unloading_thread_.join();
+
+  while (!resource_status_thread_.joinable())
+  {
+    std::cout << "[" << __func__ << "] " << "waiting for the resource status thread to finish ..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  resource_status_thread_.join();
 }
 
-// Timer callback where running proceses are checked if they are operational
-void ERManager::update(const ros::TimerEvent&)
+void ERManager::resourceLoadLoop()
 {
-  // execute each process in loading_processes vector
-  waitForLock(running_mutex_);
-  waitForLock(loading_mutex_);
-  for (auto& srv : loading_processes_)
+while(ros::ok())
+{
+  // Make a copy of the loading_processes_ vector so that the original could be released for other threads
+  std::vector<temoto_er_manager::LoadExtResource> loading_processes_cpy;
+
+  // Closed scope for the lock
   {
+    std::lock_guard<std::mutex> load_processes_lock(loading_mutex_);
+    loading_processes_cpy = loading_processes_;
+    loading_processes_.clear();
+  }
+
+  // execute each process in loading_processes vector
+  for (auto& srv : loading_processes_cpy)
+  {
+    TEMOTO_DEBUG_STREAM("Loading resource: " << srv.request);
     const std::string& package_name = srv.request.package_name;
     const std::string& executable = srv.request.executable;
     const std::string& args = srv.request.args;
@@ -128,79 +160,115 @@ void ERManager::update(const ros::TimerEvent&)
 
     // Only parent gets here
     TEMOTO_DEBUG("Child %d forked.", pid);
-    running_processes_.insert({ pid, srv });
-  }
-  loading_processes_.clear();
-  loading_mutex_.unlock();
 
-  // unload each process in unload_processes vector
-  waitForLock(unloading_mutex_);
-  for (auto pid : unloading_processes_)
+    // Closed scope for the lock
+    {
+      std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
+      running_processes_.insert({ pid, srv });
+    }
+  }
+
+  // Sleep for 1 second
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+}
+
+void ERManager::resourceUnloadLoop()
+{
+while(ros::ok())
+{
+  std::vector<pid_t> unloading_processes_cpy;
+
+  // Closed scope for the lock
   {
-    // consistency check, ensure that pid is still in running_processes
-    auto proc_it = running_processes_.find(pid);
-    if (proc_it != running_processes_.end())
-    {
-      // Kill the process
-      TEMOTO_DEBUG("Sending kill(SIGTERM) to %d", pid);
+    std::lock_guard<std::mutex> unload_processes_lock(unloading_mutex_);
+    unloading_processes_cpy = unloading_processes_;
+    unloading_processes_.clear();
+  }
 
-      int ret = kill(pid, SIGTERM);
-      TEMOTO_DEBUG("kill(SIGTERM) returned: %d", ret);
-      // TODO: Check the returned value
-
-      // Remove the process from the map
-      running_processes_.erase(proc_it);
-    }
-    // Process failed and does not exist any more.
-    // Remove it from the failed processes map
-    else if(!failed_processes_.erase(pid))
+  // Closed scope for the lock
+  {
+    std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
+    for (auto pid : unloading_processes_cpy)
     {
-      TEMOTO_DEBUG("Unable to unload reource with pid: %d. Resource is not running nor marked as failed.", pid);
+      
+      // consistency check, ensure that pid is still in running_processes
+      auto proc_it = running_processes_.find(pid);
+      if (proc_it != running_processes_.end())
+      {
+        // Kill the process
+        TEMOTO_DEBUG("Sending kill(SIGTERM) to %d", pid);
+
+        int ret = kill(pid, SIGTERM);
+        TEMOTO_DEBUG("kill(SIGTERM) returned: %d", ret);
+        // TODO: Check the returned value
+
+        // Remove the process from the map
+        running_processes_.erase(proc_it);
+      }
+      // Process failed and does not exist any more.
+      // Remove it from the failed processes map
+      else if(!failed_processes_.erase(pid))
+      {
+        TEMOTO_DEBUG("Unable to unload reource with pid: %d. Resource is not running nor marked as failed.", pid);
+      }
     }
   }
-  unloading_processes_.clear();
 
+  // Sleep for 1 second
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+} 
+}
+
+void ERManager::resourceStatusLoop()
+{
+while(ros::ok())
+{
   // Check the status of all running processes
   // cache all to statuses before actual sending, so we can release the running_mutex.
-  std::vector<temoto_core::ResourceStatus> statuses_to_send; 
-  auto proc_it = running_processes_.begin();
-  while (proc_it != running_processes_.end())
+  std::vector<temoto_core::ResourceStatus> statuses_to_send;
+
+  // Closed scope for the lock guard
   {
-    int status;
-    int kill_response = waitpid(proc_it->first, &status, WNOHANG);
-    // If the child process has stopped running,
-    if (kill_response != 0)
-    {
-      TEMOTO_ERROR("Process %d ('%s' '%s' '%s') has stopped.", proc_it->first,
-                   proc_it->second.request.action.c_str(),
-                   proc_it->second.request.package_name.c_str(),
-                   proc_it->second.request.executable.c_str());
+    std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
 
-      // TODO: send error information to all related connections
-      temoto_core::ResourceStatus srv;
-      srv.request.resource_id = proc_it->second.response.trr.resource_id;
-      srv.request.status_code = trr::status_codes::FAILED;
-      std::stringstream ss;
-      ss << "The process with pid '" << proc_it->first << "' has stopped.";
-      srv.request.message = ss.str();
-      srv.request.error_stack = CREATE_ERROR(error::Code::PROCESS_STOPPED, ss.str());
-
-      // store statuses to send
-      statuses_to_send.push_back(srv);
-      
-      // Remove the process from the map
-      // Currently the status is propagated to who ever is using the resource,
-      // each of which is responsible to unload the failed resource on its own.
-      failed_processes_.insert(*proc_it);
-      proc_it = running_processes_.erase(proc_it);
-    }
-    else
+    auto proc_it = running_processes_.begin();
+    while (proc_it != running_processes_.end())
     {
-      proc_it++;
+      int status;
+      int kill_response = waitpid(proc_it->first, &status, WNOHANG);
+      // If the child process has stopped running,
+      if (kill_response != 0)
+      {
+        TEMOTO_ERROR("Process %d ('%s' '%s' '%s') has stopped.", proc_it->first,
+                    proc_it->second.request.action.c_str(),
+                    proc_it->second.request.package_name.c_str(),
+                    proc_it->second.request.executable.c_str());
+
+        // TODO: send error information to all related connections
+        temoto_core::ResourceStatus srv;
+        srv.request.resource_id = proc_it->second.response.trr.resource_id;
+        srv.request.status_code = trr::status_codes::FAILED;
+        std::stringstream ss;
+        ss << "The process with pid '" << proc_it->first << "' has stopped.";
+        srv.request.message = ss.str();
+        srv.request.error_stack = CREATE_ERROR(error::Code::PROCESS_STOPPED, ss.str());
+
+        // store statuses to send
+        statuses_to_send.push_back(srv);
+        
+        // Remove the process from the map
+        // Currently the status is propagated to who ever is using the resource,
+        // each of which is responsible to unload the failed resource on its own.
+        failed_processes_.insert(*proc_it);
+        proc_it = running_processes_.erase(proc_it);
+      }
+      else
+      {
+        proc_it++;
+      }
     }
   }
-  running_mutex_.unlock();
-  unloading_mutex_.unlock();
 
   for (auto& srv : statuses_to_send)
   {
@@ -209,6 +277,10 @@ void ERManager::update(const ros::TimerEvent&)
     // TODO: Normally unload command should come from upper chain, howerver, when sending status is unsucessful, we should unload the resource manually?
    // running_processes_.erase(proc_it++);
   }
+
+  // Sleep for 1 second
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+} 
 }
 
 void ERManager::loadCb( temoto_er_manager::LoadExtResource::Request& req,
@@ -273,9 +345,11 @@ void ERManager::loadCb( temoto_er_manager::LoadExtResource::Request& req,
     srv.request = req;
     srv.response = res;
 
-    loading_mutex_.lock();
-    loading_processes_.push_back(srv);
-    loading_mutex_.unlock();
+    // Closed scope for the lock
+    {
+      std::lock_guard<std::mutex> load_processes_lock(loading_mutex_);
+      loading_processes_.push_back(srv);
+    }
   }
   else
   {
@@ -291,10 +365,11 @@ void ERManager::loadCb( temoto_er_manager::LoadExtResource::Request& req,
 void ERManager::unloadCb(temoto_er_manager::LoadExtResource::Request& req,
                               temoto_er_manager::LoadExtResource::Response& res)
 {
+  // Lookup the requested process by its resource id.
+  std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
+  std::lock_guard<std::mutex> unload_processes_lock(unloading_mutex_);
   TEMOTO_DEBUG("Unloading resource with id '%ld' ...", res.trr.resource_id);
 
-  // Lookup the requested process by its resource id.
-  waitForLock(running_mutex_);
   auto proc_it =
       std::find_if(running_processes_.begin(), running_processes_.end(),
                    [&](const std::pair< pid_t, temoto_er_manager::LoadExtResource>& p) -> bool { return p.second.request == req; });
@@ -322,9 +397,6 @@ void ERManager::unloadCb(temoto_er_manager::LoadExtResource::Request& req,
     res.trr.code = trr::status_codes::FAILED;
     res.trr.message = "Resource is not running nor failed. Unable to unload.";
   }
-  running_mutex_.unlock();
-
-  unloading_mutex_.unlock();
 }
 
   void ERManager::waitForLock(std::mutex& m)
