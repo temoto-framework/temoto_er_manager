@@ -191,18 +191,26 @@ while(ros::ok())
     std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
     for (auto pid : unloading_processes_cpy)
     {
-      
       // consistency check, ensure that pid is still in running_processes
       auto proc_it = running_processes_.find(pid);
       if (proc_it != running_processes_.end())
       {
         // Kill the process
-        TEMOTO_DEBUG("Sending kill(SIGTERM) to %d", pid);
+        TEMOTO_DEBUG("Sending kill(SIGINT) to %d ...", pid);
+        int ret = kill(pid, SIGINT);
 
-        int ret = kill(pid, SIGTERM);
-        TEMOTO_DEBUG("kill(SIGTERM) returned: %d", ret);
-        // TODO: Check the returned value
-
+        // If SIGINT did not do the trick, then try SIGTERM
+        if (ret != 0)
+        {
+          TEMOTO_DEBUG_STREAM("Process with PID=" << pid << " did not stop successfully. " 
+          "Stopping it via SIGTERM.");
+          ret = kill(pid, SIGTERM);
+        }
+        else
+        {
+          TEMOTO_DEBUG_STREAM("Process with PID=" << pid << " was stopped successfully.");
+        }
+        
         // Remove the process from the map
         running_processes_.erase(proc_it);
       }
