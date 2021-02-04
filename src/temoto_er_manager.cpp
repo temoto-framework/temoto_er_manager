@@ -31,9 +31,9 @@ ERManager::ERManager()
 : BaseSubsystem( "temoto_er_manager", error::Subsystem::PROCESS_MANAGER, __func__)
 , resource_registrar_(srv_name::MANAGER, this)
 {
-  resource_registrar_.addServer<LoadExtResource>( srv_name::SERVER
-                                                , &ERManager::loadCb
-                                                , &ERManager::unloadCb);
+  resource_registrar_.addServer<LoadExtResource>(srv_name::SERVER
+  , &ERManager::loadCb
+  , &ERManager::unloadCb);
 
   /*
    * Find the catkin workspace
@@ -76,7 +76,7 @@ ERManager::ERManager()
   resource_unloading_thread_ = std::thread(&ERManager::resourceUnloadLoop, this);;
   resource_status_thread_ = std::thread(&ERManager::resourceStatusLoop, this);;
 
-  TEMOTO_INFO("Process manager is ready.");
+  TEMOTO_INFO("External Resource Manager is ready.");
 }
 
 ERManager::~ERManager()
@@ -280,10 +280,18 @@ while(ros::ok())
 
   for (auto& srv : statuses_to_send)
   {
-    resource_registrar_.sendStatus(srv);
-
-    // TODO: Normally unload command should come from upper chain, howerver, when sending status is unsucessful, we should unload the resource manually?
-   // running_processes_.erase(proc_it++);
+    try
+    {
+      resource_registrar_.sendStatus(srv);
+    }
+    catch (temoto_core::error::ErrorStack& error_stack)
+    {
+      TEMOTO_ERROR_STREAM("Unable to send status message:" << srv.request);
+    }
+    catch (...)
+    {
+      TEMOTO_ERROR_STREAM("Caught an unhandled exception");
+    }
   }
 
   // Sleep for 1 second
@@ -291,21 +299,21 @@ while(ros::ok())
 } 
 }
 
-void ERManager::loadCb( temoto_er_manager::LoadExtResource::Request& req,
-                        temoto_er_manager::LoadExtResource::Response& res)
+void ERManager::loadCb( temoto_er_manager::LoadExtResource::Request& req
+, temoto_er_manager::LoadExtResource::Response& res)
 {
   TEMOTO_DEBUG_STREAM("Received a request: " << req);
 
   // Validate the action command.
-  if (req.action == action::ROS_EXECUTE) //|| action == action::SYS_EXECUTE)
+  if (req.action == action::ROS_EXECUTE)
   {
     std::string path = ros::package::getPath(req.package_name);
-    if(path=="")
+    if(path.empty())
     {
       throw CREATE_ERROR(error::Code::PACKAGE_NOT_FOUND, "ROS Package: '%s' was not found.", req.package_name.c_str());
     }
 
-    // Check if .launch file exists.
+    // If the executable is a ROS launch file, then check if it exists
     std::regex rx(".*\\.launch$");
     if (std::regex_match(req.executable, rx))
     {
@@ -316,53 +324,28 @@ void ERManager::loadCb( temoto_er_manager::LoadExtResource::Request& req,
                            req.package_name.c_str(), req.executable.c_str());
       }
     }
-    // TODO: In whats below, catkin_find is unable to find .py files. That's why its commented out.
-//    else
-//    {
-//      // Check if the requested binary exists
-//      std::string catkin_find_cmd = "catkin_find " + req.package_name + " " + req.executable;
-//      std::shared_ptr<FILE> pipe(popen(catkin_find_cmd.c_str(), "r"), pclose);
-//      if(pipe)
-//      {
-//        std::array<char, 128> buffer;
-//        std::string result;
-//        while(!feof(pipe.get()))
-//        {
-//          if (fgets(buffer.data(), 128, pipe.get()) != nullptr)
-//          {
-//            result += buffer.data();
-//          }
-//        }
-//
-//        //catkin find does not write anything to stdout if the binary does not exist.
-//        if (!result.size())
-//        {
-//          throw CREATE_ERROR(error::Code::EXECUTABLE_NOT_FOUND,
-//                             "ROS Package: '%s' does not contain the executable '%s'.",
-//                             req.package_name.c_str(), req.executable.c_str());
-//        }
-//      }
-//    }
-
-    // Yey, the executable and ros package exists. Add it to the loading queue.
-
-    TEMOTO_DEBUG("Adding '%s' '%s' '%s' '%s' to the loading queue.", req.action.c_str(),
-                 req.package_name.c_str(), req.executable.c_str(), req.args.c_str());
-
-    temoto_er_manager::LoadExtResource srv;
-    srv.request = req;
-    srv.response = res;
-
-    // Closed scope for the lock
-    {
-      std::lock_guard<std::mutex> load_processes_lock(loading_mutex_);
-      loading_processes_.push_back(srv);
-    }
+  }
+  else if (req.action == action::SYS_EXECUTE)
+  {
+    // TODO check if the requested system program exists
   }
   else
   {
     throw CREATE_ERROR(error::Code::ACTION_UNKNOWN, "Action '%s' is not supported.",
                        req.action.c_str());
+  }
+
+  TEMOTO_DEBUG("Adding '%s' '%s' '%s' '%s' to the loading queue.", req.action.c_str(),
+                 req.package_name.c_str(), req.executable.c_str(), req.args.c_str());
+
+  temoto_er_manager::LoadExtResource srv;
+  srv.request = req;
+  srv.response = res;
+
+  // Closed scope for the lock
+  {
+    std::lock_guard<std::mutex> load_processes_lock(loading_mutex_);
+    loading_processes_.push_back(srv);
   }
 
   // Fill response

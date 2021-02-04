@@ -10,7 +10,7 @@ namespace temoto_er_manager
 	namespace srv_name
 	{
 		const std::string MANAGER = "temoto_er_manager";
-		const std::string SERVER = "load_process";
+		const std::string SERVER = "load_external_resource";
 	}
 
   namespace action
