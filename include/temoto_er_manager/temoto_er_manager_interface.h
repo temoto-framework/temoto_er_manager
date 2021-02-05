@@ -22,31 +22,51 @@ class ERManagerInterface : public temoto_core::BaseSubsystem
 {
 public:
 
-  ERManagerInterface()
+  ERManagerInterface(bool initialize_interface = false)
   : unique_suffix_(std::to_string(createID()))
   , has_owner_(false)
+  , initialized_(false)
   {
     class_name_ = __func__;
+    if (initialize_interface)
+    {
+      initialize();
+    }
   }
 
   void initialize(const BaseSubsystem& owner)
   {
-    initializeBase(owner);
-    log_group_ = "interfaces." + owner.subsystem_name_;
-    rr_name_ = owner.class_name_ + "/" + class_name_ + "_" + unique_suffix_;
-    has_owner_ = true;
-    initialize();
+    if (!initialized_)
+    {
+      initializeBase(owner);
+      log_group_ = "interfaces." + owner.subsystem_name_;
+      rr_name_ = owner.class_name_ + "/" + class_name_ + "_" + unique_suffix_;
+      has_owner_ = true;
+      initialize();
+    }
+    else
+    {
+      TEMOTO_WARN_STREAM("The External Resource Manager interface is already initialized");
+    }
   }
 
   void initialize()
   {
-    if (!has_owner_)
+    if (!initialized_)
     {
-      rr_name_ = class_name_ + "_" + unique_suffix_;
+      if (!has_owner_)
+      {
+        rr_name_ = class_name_ + "_" + unique_suffix_;
+      }
+      resource_registrar_ = std::unique_ptr<temoto_core::trr::ResourceRegistrar<ERManagerInterface>>(
+                          new temoto_core::trr::ResourceRegistrar<ERManagerInterface>(rr_name_, this));
+      resource_registrar_->registerStatusCb(&ERManagerInterface::statusInfoCb);
+      initialized_ = true;
     }
-    resource_registrar_ = std::unique_ptr<temoto_core::trr::ResourceRegistrar<ERManagerInterface>>(
-                        new temoto_core::trr::ResourceRegistrar<ERManagerInterface>(rr_name_, this));
-    resource_registrar_->registerStatusCb(&ERManagerInterface::statusInfoCb);
+    else
+    {
+      TEMOTO_WARN_STREAM("The External Resource Manager interface is already initialized");
+    }
   }
 
    unsigned int createID()
@@ -209,6 +229,7 @@ private:
   std::string rr_name_;
   std::string unique_suffix_;
   bool has_owner_;
+  bool initialized_;
   std::map<unsigned int, temoto_er_manager::LoadExtResource> allocated_external_resources_;
   std::unique_ptr<temoto_core::trr::ResourceRegistrar<ERManagerInterface>> resource_registrar_;
   std::function<void(LoadExtResource)> update_callback_ = NULL;
