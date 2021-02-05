@@ -11,7 +11,7 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "test_er_client_node");
 
   /*
-   * Create External Manager Interface object that provides a simplified
+   * Create External Resource Manager Interface object that provides a simplified
    * API for communicating with the External Resource Manager. The boolean "true", that's passed
    * to the constructor of ERM interface tells it whether it should be initialised immediately,
    * or that's done later by the user.
