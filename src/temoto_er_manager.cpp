@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <spawn.h>
 #include <regex>
+#include <functional>
 
 namespace temoto_er_manager
 {
@@ -29,11 +30,16 @@ using namespace temoto_core;
 
 ERManager::ERManager() 
 : BaseSubsystem( "temoto_er_manager", error::Subsystem::PROCESS_MANAGER, __func__)
-, resource_registrar_(srv_name::MANAGER, this)
+, resource_registrar_(srv_name::MANAGER)
 {
-  resource_registrar_.addServer<LoadExtResource>(srv_name::SERVER
-  , &ERManager::loadCb
-  , &ERManager::unloadCb);
+  auto server = std::make_unique<Ros1Server<LoadExtResource>>(srv_name::SERVER
+  , std::bind(&ERManager::loadCb, this, std::placeholders::_1, std::placeholders::_2)
+  , std::bind(&ERManager::unloadCb, this, std::placeholders::_1, std::placeholders::_2));
+  resource_registrar_.registerServer(std::move(server));
+
+  // resource_registrar_.addServer<LoadExtResource>(srv_name::SERVER
+  // , &ERManager::loadCb
+  // , &ERManager::unloadCb);
 
   /*
    * Find the catkin workspace
@@ -282,7 +288,7 @@ while(ros::ok())
   {
     try
     {
-      resource_registrar_.sendStatus(srv);
+      //resource_registrar_.sendStatus(srv);
     }
     catch (temoto_core::error::ErrorStack& error_stack)
     {
@@ -299,8 +305,7 @@ while(ros::ok())
 } 
 }
 
-void ERManager::loadCb( temoto_er_manager::LoadExtResource::Request& req
-, temoto_er_manager::LoadExtResource::Response& res)
+void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response& res)
 {
   TEMOTO_DEBUG_STREAM("Received a request: " << req);
 
@@ -353,8 +358,7 @@ void ERManager::loadCb( temoto_er_manager::LoadExtResource::Request& req
   res.trr.message = "Request added to the loading queue.";
 }
 
-void ERManager::unloadCb(temoto_er_manager::LoadExtResource::Request& req,
-                              temoto_er_manager::LoadExtResource::Response& res)
+void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Response& res)
 {
   // Lookup the requested process by its resource id.
   std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
