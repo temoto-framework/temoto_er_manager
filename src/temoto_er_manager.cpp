@@ -14,8 +14,6 @@
  * limitations under the License.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "ros/package.h"
-#include "temoto_er_manager/temoto_er_manager.h"
 #include <stdio.h>
 #include <csignal>
 #include <sys/wait.h>
@@ -23,6 +21,8 @@
 #include <spawn.h>
 #include <regex>
 #include <functional>
+#include "ros/package.h"
+#include "temoto_er_manager/temoto_er_manager.h"
 
 namespace temoto_er_manager
 {
@@ -32,14 +32,11 @@ ERManager::ERManager()
 : BaseSubsystem( "temoto_er_manager", error::Subsystem::PROCESS_MANAGER, __func__)
 , resource_registrar_(srv_name::MANAGER)
 {
-  auto server = std::make_unique<Ros1Server<LoadExtResource>>(srv_name::SERVER
+  auto server = std::make_unique<Ros1Server<LoadExtResource>>(srv_name::MANAGER + "_" + srv_name::SERVER
   , std::bind(&ERManager::loadCb, this, std::placeholders::_1, std::placeholders::_2)
   , std::bind(&ERManager::unloadCb, this, std::placeholders::_1, std::placeholders::_2));
   resource_registrar_.registerServer(std::move(server));
-
-  // resource_registrar_.addServer<LoadExtResource>(srv_name::SERVER
-  // , &ERManager::loadCb
-  // , &ERManager::unloadCb);
+  resource_registrar_.init();
 
   /*
    * Find the catkin workspace
@@ -240,7 +237,7 @@ while(ros::ok())
 {
   // Check the status of all running processes
   // cache all to statuses before actual sending, so we can release the running_mutex.
-  std::vector<temoto_core::ResourceStatus> statuses_to_send;
+  std::vector<temoto_resource_registrar::Status> statuses_to_send;
 
   // Closed scope for the lock guard
   {
@@ -254,22 +251,25 @@ while(ros::ok())
       // If the child process has stopped running,
       if (kill_response != 0)
       {
-        TEMOTO_ERROR("Process %d ('%s' '%s' '%s') has stopped.", proc_it->first,
-                    proc_it->second.request.action.c_str(),
-                    proc_it->second.request.package_name.c_str(),
-                    proc_it->second.request.executable.c_str());
+        TEMOTO_ERROR("Process %d ('%s' '%s' '%s') has stopped."
+        , proc_it->first
+        , proc_it->second.request.action.c_str()
+        , proc_it->second.request.package_name.c_str()
+        , proc_it->second.request.executable.c_str());
 
         // TODO: send error information to all related connections
-        temoto_core::ResourceStatus srv;
-        srv.request.resource_id = proc_it->second.response.trr.resource_id;
-        srv.request.status_code = trr::status_codes::FAILED;
         std::stringstream ss;
         ss << "The process with pid '" << proc_it->first << "' has stopped.";
-        srv.request.message = ss.str();
-        srv.request.error_stack = CREATE_ERROR(error::Code::PROCESS_STOPPED, ss.str());
+
+        temoto_resource_registrar::Status status_msg;
+        status_msg.id_ = proc_it->second.response.TemotoMetadata.requestId;
+        status_msg.state_ = temoto_resource_registrar::Status::State::FATAL;
+        status_msg.message_ = ss.str();
+        
+        //srv.request.error_stack = CREATE_ERROR(error::Code::PROCESS_STOPPED, ss.str());
 
         // store statuses to send
-        statuses_to_send.push_back(srv);
+        statuses_to_send.push_back(status_msg);
         
         // Remove the process from the map
         // Currently the status is propagated to who ever is using the resource,
@@ -284,15 +284,15 @@ while(ros::ok())
     }
   }
 
-  for (auto& srv : statuses_to_send)
+  for (auto& status_msg : statuses_to_send)
   {
     try
     {
-      //resource_registrar_.sendStatus(srv);
+      resource_registrar_.sendStatus(status_msg);
     }
     catch (temoto_core::error::ErrorStack& error_stack)
     {
-      TEMOTO_ERROR_STREAM("Unable to send status message:" << srv.request);
+      TEMOTO_ERROR_STREAM("Unable to send status message:" << status_msg.id_ << "; " << status_msg.message_);
     }
     catch (...)
     {

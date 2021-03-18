@@ -3,12 +3,12 @@
 
 #include "temoto_core/common/base_subsystem.h"
 #include "temoto_core/trr/resource_registrar.h"
+#include "rr/ros1_resource_registrar.h"
 
 #include "temoto_er_manager/temoto_er_manager_services.h"
 #include <memory>
 #include <ctime>
 #include <functional>
-
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
@@ -58,9 +58,8 @@ public:
       {
         rr_name_ = class_name_ + "_" + unique_suffix_;
       }
-      resource_registrar_ = std::unique_ptr<temoto_core::trr::ResourceRegistrar<ERManagerInterface>>(
-                          new temoto_core::trr::ResourceRegistrar<ERManagerInterface>(rr_name_, this));
-      resource_registrar_->registerStatusCb(&ERManagerInterface::statusInfoCb);
+      resource_registrar_ = std::make_unique<temoto_resource_registrar::ResourceRegistrarRos1>(rr_name_);
+      resource_registrar_->init();
       initialized_ = true;
     }
     else
@@ -112,10 +111,12 @@ public:
     // Call the server
     try
     {
-      resource_registrar_->template call<LoadExtResource>(temoto_er_manager::srv_name::MANAGER
+      resource_registrar_->call<LoadExtResource>(temoto_er_manager::srv_name::MANAGER
       , temoto_er_manager::srv_name::SERVER
       , load_resource_msg
-      , temoto_core::trr::FailureBehavior::NONE);
+      , NULL
+      , std::bind(&ERManagerInterface::statusInfoCb, this, std::placeholders::_1, std::placeholders::_2));
+      
     }
     catch(temoto_core::error::ErrorStack& error_stack)
     {
@@ -139,7 +140,8 @@ public:
 
     try
     {
-      resource_registrar_->unloadClientResource(load_resource_msg.response.trr.resource_id);
+      resource_registrar_->unload(temoto_er_manager::srv_name::MANAGER
+      , load_resource_msg.response.TemotoMetadata.requestId);
       allocated_external_resources_.erase(load_resource_msg.response.trr.resource_id);
     }
     catch(temoto_core::error::ErrorStack& error_stack)
@@ -148,7 +150,7 @@ public:
     }
   }
 
-  void statusInfoCb(temoto_core::ResourceStatus& srv)
+  void statusInfoCb(LoadExtResource srv_msg, temoto_resource_registrar::Status status_msg)
   {
     try
     {
@@ -158,30 +160,15 @@ public:
     {
       throw FORWARD_ERROR(error_stack);
     }
-
-    TEMOTO_DEBUG_STREAM("status info was received");
-    TEMOTO_DEBUG_STREAM(srv.request);
-
-    /*
-     * Find the associated query
-     */ 
-    LoadExtResource associated_query;
-    try
-    {
-      associated_query = allocated_external_resources_.at(srv.request.resource_id);
-    }
-    catch(const std::exception& e)
-    {
-      throw CREATE_ERROR(temoto_core::error::Code::RESOURCE_NOT_FOUND, "Query not found");
-    }
+    TEMOTO_ERROR_STREAM("status info was received ...");
     
     /*
      * Check if the owner has a status routine defined
      */
-    if (update_callback_)
+    if (user_status_callback_)
     {
       TEMOTO_DEBUG_STREAM("Invoking user-registered status callback");
-      update_callback_(associated_query);
+      user_status_callback_(srv_msg, status_msg);
       return;
     }
     else
@@ -189,17 +176,19 @@ public:
       try
       {
         TEMOTO_DEBUG_STREAM("Unloading the failed resource");
-        resource_registrar_->unloadClientResource(associated_query.response.trr.resource_id);
-        allocated_external_resources_.erase(associated_query.response.trr.resource_id);
-        associated_query.response = LoadExtResource::Response();
+        resource_registrar_->unload(temoto_er_manager::srv_name::MANAGER
+        , srv_msg.response.TemotoMetadata.requestId);
+
+        allocated_external_resources_.erase(srv_msg.response.trr.resource_id);
+        LoadExtResource new_srv_msg;
+        new_srv_msg.request = srv_msg.request;
 
         TEMOTO_DEBUG_STREAM("Asking the same resource again");
-        resource_registrar_->template call<LoadExtResource>(temoto_er_manager::srv_name::MANAGER
+        resource_registrar_->call<LoadExtResource>(temoto_er_manager::srv_name::MANAGER
         , temoto_er_manager::srv_name::SERVER
-        , associated_query
-        , temoto_core::trr::FailureBehavior::NONE);
+        , new_srv_msg);
 
-        allocated_external_resources_.emplace(associated_query.response.trr.resource_id, associated_query);
+        allocated_external_resources_.emplace(new_srv_msg.response.trr.resource_id, new_srv_msg);
       }
       catch(temoto_core::error::ErrorStack& error_stack)
       {
@@ -211,9 +200,9 @@ public:
   /**
    * @brief registerUpdateCallback
    */
-  void registerUpdateCallback( std::function<void(LoadExtResource)> update_callback)
+  void registerUpdateCallback( std::function<void(LoadExtResource, temoto_resource_registrar::Status)> user_status_callback)
   {
-    update_callback_ = update_callback;
+    user_status_callback_ = user_status_callback;
   }
 
   ~ERManagerInterface()
@@ -231,18 +220,15 @@ private:
   bool has_owner_;
   bool initialized_;
   std::map<unsigned int, temoto_er_manager::LoadExtResource> allocated_external_resources_;
-  std::unique_ptr<temoto_core::trr::ResourceRegistrar<ERManagerInterface>> resource_registrar_;
-  std::function<void(LoadExtResource)> update_callback_ = NULL;
+  std::unique_ptr<temoto_resource_registrar::ResourceRegistrarRos1> resource_registrar_;
+  std::function<void(LoadExtResource, temoto_resource_registrar::Status)> user_status_callback_ = NULL;
 
   /**
    * @brief validateInterface
    */
   void validateInterface()
   {
-    if(!resource_registrar_)
-    {
-      throw CREATE_ERROR(temoto_core::error::Code::UNINITIALIZED, "Interface is not initalized.");
-    }
+    // TODO: Deprecated, to be removed.
   }
 };
 

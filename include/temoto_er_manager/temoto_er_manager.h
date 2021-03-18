@@ -63,14 +63,8 @@ private:
 
   ros::NodeHandle nh_;
 
-  // Resource management protocol
   temoto_resource_registrar::ResourceRegistrarRos1 resource_registrar_;
 
-  // Listens for calls to start or kill processes
-  //ros::ServiceServer spawn_kill_srv_;
-
-  // Holds clients toi connect and send info to other (Sensor, Context, etc.) managers
-  //ros::ServiceClient resource_status_client_;
   void waitForLock(std::mutex& m);
   inline bool executableExists (const std::string& name)
   {
