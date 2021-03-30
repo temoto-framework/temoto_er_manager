@@ -416,10 +416,10 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
 
   auto proc_it =
       std::find_if(running_processes_.begin(), running_processes_.end(),
-                   [&](const std::pair< pid_t, temoto_er_manager::LoadExtResource>& p) -> bool { return p.second.request == req; });
+                   [&](const std::pair< pid_t, temoto_er_manager::LoadExtResource>& p) -> bool { return p.second.response.pid == res.pid; });
   auto failed_proc_it =
       std::find_if(failed_processes_.begin(), failed_processes_.end(),
-                   [&](const std::pair< pid_t, temoto_er_manager::LoadExtResource>& p) -> bool { return p.second.request == req; });
+                   [&](const std::pair< pid_t, temoto_er_manager::LoadExtResource>& p) -> bool { return p.second.response.pid == res.pid; });
   if (proc_it != running_processes_.end())
   {
     unloading_processes_.push_back(proc_it->first);
