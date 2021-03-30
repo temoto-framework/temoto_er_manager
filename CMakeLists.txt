@@ -16,8 +16,6 @@ find_package(catkin REQUIRED
   temoto_resource_registrar
 )
 
-find_library(rr_core REQUIRED)
-
 add_service_files(
   FILES
   LoadExtResource.srv
@@ -52,7 +50,6 @@ add_dependencies(temoto_er_manager
 
 target_link_libraries( temoto_er_manager 
   ${catkin_LIBRARIES}
-  rr_core
 )
 
 install(TARGETS temoto_er_manager

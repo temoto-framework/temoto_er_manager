@@ -21,6 +21,7 @@
 #include <spawn.h>
 #include <regex>
 #include <functional>
+#include <boost/filesystem.hpp>
 #include "ros/package.h"
 #include "temoto_er_manager/temoto_er_manager.h"
 
@@ -32,11 +33,38 @@ ERManager::ERManager()
 : BaseSubsystem( "temoto_er_manager", error::Subsystem::PROCESS_MANAGER, __func__)
 , resource_registrar_(srv_name::MANAGER)
 {
+  /*
+   * Configure the RR catalog backup routine
+   */
+  std::string rr_catalog_backup_path = "/home/robert/.temoto/" + srv_name::MANAGER + ".rrcat";
+  rr_catalog_config_.setName(srv_name::MANAGER);
+  rr_catalog_config_.setLocation(rr_catalog_backup_path);
+  rr_catalog_config_.setSaveOnModify(true);
+  rr_catalog_config_.setEraseOnDestruct(true);
+  resource_registrar_.updateConfiguration(rr_catalog_config_);
+
+  /*
+   * Add the LoadExtResource server to the resource registrar
+   */
   auto server = std::make_unique<Ros1Server<LoadExtResource>>(srv_name::MANAGER + "_" + srv_name::SERVER
   , std::bind(&ERManager::loadCb, this, std::placeholders::_1, std::placeholders::_2)
   , std::bind(&ERManager::unloadCb, this, std::placeholders::_1, std::placeholders::_2));
   resource_registrar_.registerServer(std::move(server));
   resource_registrar_.init();
+  
+  /*
+   * Check if this node should be recovered from a previous system failure
+   */
+  if (boost::filesystem::exists(rr_catalog_backup_path))
+  {
+    resource_registrar_.loadCatalog();
+    for (const auto& query : resource_registrar_.getServerQueries<LoadExtResource>(srv_name::MANAGER + "_" + srv_name::SERVER))
+    {
+      running_processes_.insert({query.response.pid, query});
+      ROS_INFO_STREAM(query.request);
+      ROS_INFO_STREAM(query.response);
+    }
+  }
 
   /*
    * Find the catkin workspace
@@ -104,6 +132,22 @@ ERManager::~ERManager()
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   resource_status_thread_.join();
+
+  /*
+   * Stop all the processes
+   */
+  for (const auto& running_process : running_processes_)
+  {
+    int ret = kill(running_process.first, SIGINT);
+
+    // If SIGINT did not do the trick, then try SIGTERM
+    if (ret != 0)
+    {
+      TEMOTO_DEBUG_STREAM("Process with PID=" << running_process.first << " did not stop successfully. " 
+      "Stopping it via SIGTERM.");
+      ret = kill(running_process.first, SIGTERM);
+    }
+  }
 }
 
 void ERManager::resourceLoadLoop()
@@ -111,7 +155,7 @@ void ERManager::resourceLoadLoop()
 while(ros::ok())
 {
   // Make a copy of the loading_processes_ vector so that the original could be released for other threads
-  std::vector<temoto_er_manager::LoadExtResource> loading_processes_cpy;
+  std::vector<LoadExtResource> loading_processes_cpy;
 
   // Closed scope for the lock
   {
@@ -167,7 +211,10 @@ while(ros::ok())
     // Closed scope for the lock
     {
       std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
+      srv.response.pid = pid;
       running_processes_.insert({ pid, srv });
+      resource_registrar_.updateQueryResponse<LoadExtResource>(srv_name::MANAGER + "_" + srv_name::SERVER, srv);
+      resource_registrar_.saveCatalog();
     }
   }
 
@@ -247,15 +294,17 @@ while(ros::ok())
     while (proc_it != running_processes_.end())
     {
       int status;
-      int kill_response = waitpid(proc_it->first, &status, WNOHANG);
+      //int kill_response = waitpid(proc_it->first, &status, WNOHANG);
+      int kill_response = kill(proc_it->first, 0);
       // If the child process has stopped running,
       if (kill_response != 0)
       {
-        TEMOTO_ERROR("Process %d ('%s' '%s' '%s') has stopped."
+        TEMOTO_ERROR("Process %d ('%s' '%s' '%s') has stopped. waitpid = %d"
         , proc_it->first
         , proc_it->second.request.action.c_str()
         , proc_it->second.request.package_name.c_str()
-        , proc_it->second.request.executable.c_str());
+        , proc_it->second.request.executable.c_str()
+        , kill_response);
 
         // TODO: send error information to all related connections
         std::stringstream ss;
@@ -354,8 +403,8 @@ void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response&
   }
 
   // Fill response
-  res.trr.code = trr::status_codes::OK;
-  res.trr.message = "Request added to the loading queue.";
+  // res.trr.code = trr::status_codes::OK;
+  // res.trr.message = "Request added to the loading queue.";
 }
 
 void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Response& res)
@@ -363,7 +412,7 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   // Lookup the requested process by its resource id.
   std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
   std::lock_guard<std::mutex> unload_processes_lock(unloading_mutex_);
-  TEMOTO_DEBUG("Unloading resource with id '%ld' ...", res.trr.resource_id);
+  //TEMOTO_DEBUG("Unloading resource with id '%ld' ...", res.trr.resource_id);
 
   auto proc_it =
       std::find_if(running_processes_.begin(), running_processes_.end(),
@@ -374,23 +423,23 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   if (proc_it != running_processes_.end())
   {
     unloading_processes_.push_back(proc_it->first);
-    res.trr.code = 0;
-    res.trr.message = "Resource added to unload queue.";
-    TEMOTO_DEBUG("Resource with id '%ld' added to unload queue.", res.trr.resource_id);
+    // res.trr.code = 0;
+    // res.trr.message = "Resource added to unload queue.";
+    //TEMOTO_DEBUG("Resource with id '%ld' added to unload queue.", res.trr.resource_id);
   }
   else if (failed_proc_it != failed_processes_.end())
   {
     failed_processes_.erase(failed_proc_it);
-    res.trr.code = 0;
-    res.trr.message = "Resource unloaded.";
-    TEMOTO_DEBUG("Unloaded failed resource with id '%ld'.", res.trr.resource_id);
+    // res.trr.code = 0;
+    // res.trr.message = "Resource unloaded.";
+    // TEMOTO_DEBUG("Unloaded failed resource with id '%ld'.", res.trr.resource_id);
   }
   else
   {
-    TEMOTO_ERROR("Unable to unload reource with resource_id: %ld. Resource is not running nor failed.", res.trr.resource_id);
+    //TEMOTO_ERROR("Unable to unload reource with resource_id: %ld. Resource is not running nor failed.", res.trr.resource_id);
     // Fill response
-    res.trr.code = trr::status_codes::FAILED;
-    res.trr.message = "Resource is not running nor failed. Unable to unload.";
+    // res.trr.code = trr::status_codes::FAILED;
+    // res.trr.message = "Resource is not running nor failed. Unable to unload.";
   }
 }
 

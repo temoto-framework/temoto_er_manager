@@ -20,7 +20,7 @@ string args
 temoto_resource_registrar/TemotoMetadata TemotoMetadata
 ---
 
-# Remote Management Response
-temoto_core/RMPResponse trr
+# The process id of the loaded resource
+int32 pid
 
 temoto_resource_registrar/TemotoMetadata TemotoMetadata

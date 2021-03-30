@@ -17,7 +17,6 @@
 #ifndef TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_H
 #define TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_H
 
-#include "temoto_core/trr/resource_registrar.h"
 #include "rr/ros1_resource_registrar.h"
 #include "temoto_core/common/base_subsystem.h"
 #include "temoto_er_manager/temoto_er_manager_services.h"
@@ -64,6 +63,7 @@ private:
   ros::NodeHandle nh_;
 
   temoto_resource_registrar::ResourceRegistrarRos1 resource_registrar_;
+  temoto_resource_registrar::Configuration rr_catalog_config_;
 
   void waitForLock(std::mutex& m);
   inline bool executableExists (const std::string& name)
