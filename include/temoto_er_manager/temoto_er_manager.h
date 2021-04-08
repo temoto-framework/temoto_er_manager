@@ -52,9 +52,9 @@ private:
   std::vector<pid_t> unloading_processes_;
   std::string catkin_workspace_devel_path_;
 
-  std::thread  resource_loading_thread_;  
-  std::thread  resource_unloading_thread_;
-  std::thread  resource_status_thread_;
+  std::thread resource_loading_thread_;  
+  std::thread resource_unloading_thread_;
+  std::thread resource_status_thread_;
 
   std::mutex loading_mutex_;
   std::mutex unloading_mutex_;

@@ -36,7 +36,8 @@ ERManager::ERManager()
   /*
    * Configure the RR catalog backup routine
    */
-  std::string rr_catalog_backup_path = "/home/robert/.temoto/" + srv_name::MANAGER + ".rrcat";
+  std::string home_path = std::getenv("HOME");
+  std::string rr_catalog_backup_path = home_path + "/.temoto/" + srv_name::MANAGER + ".rrcat";
   rr_catalog_config_.setName(srv_name::MANAGER);
   rr_catalog_config_.setLocation(rr_catalog_backup_path);
   rr_catalog_config_.setSaveOnModify(true);
@@ -401,10 +402,6 @@ void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response&
     std::lock_guard<std::mutex> load_processes_lock(loading_mutex_);
     loading_processes_.push_back(srv);
   }
-
-  // Fill response
-  // res.trr.code = trr::status_codes::OK;
-  // res.trr.message = "Request added to the loading queue.";
 }
 
 void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Response& res)
@@ -423,15 +420,11 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   if (proc_it != running_processes_.end())
   {
     unloading_processes_.push_back(proc_it->first);
-    // res.trr.code = 0;
-    // res.trr.message = "Resource added to unload queue.";
     //TEMOTO_DEBUG("Resource with id '%ld' added to unload queue.", res.trr.resource_id);
   }
   else if (failed_proc_it != failed_processes_.end())
   {
     failed_processes_.erase(failed_proc_it);
-    // res.trr.code = 0;
-    // res.trr.message = "Resource unloaded.";
     // TEMOTO_DEBUG("Unloaded failed resource with id '%ld'.", res.trr.resource_id);
   }
   else
