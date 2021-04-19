@@ -312,7 +312,7 @@ while(ros::ok())
         ss << "The process with pid '" << proc_it->first << "' has stopped.";
 
         temoto_resource_registrar::Status status_msg;
-        status_msg.id_ = proc_it->second.response.TemotoMetadata.requestId;
+        status_msg.id_ = proc_it->second.response.temotoMetadata.requestId;
         status_msg.state_ = temoto_resource_registrar::Status::State::FATAL;
         status_msg.message_ = ss.str();
         

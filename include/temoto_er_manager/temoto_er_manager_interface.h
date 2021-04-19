@@ -116,7 +116,7 @@ public:
       , NULL
       , std::bind(&ERManagerInterface::statusInfoCb, this, std::placeholders::_1, std::placeholders::_2));
 
-      allocated_external_resources_.emplace(load_resource_msg.request.TemotoMetadata.requestId, load_resource_msg);
+      allocated_external_resources_.emplace(load_resource_msg.response.temotoMetadata.requestId, load_resource_msg);
     }
     catch(temoto_core::error::ErrorStack& error_stack)
     {
@@ -138,10 +138,10 @@ public:
 
     try
     {
-      auto resource_id = allocated_external_resources_.at(load_resource_msg.response.TemotoMetadata.requestId).request.TemotoMetadata.requestId;
+      auto resource_id = allocated_external_resources_.at(load_resource_msg.response.temotoMetadata.requestId).response.temotoMetadata.requestId;
 
       resource_registrar_->unload(temoto_er_manager::srv_name::MANAGER, resource_id);
-      allocated_external_resources_.erase(load_resource_msg.request.TemotoMetadata.requestId);
+      allocated_external_resources_.erase(load_resource_msg.response.temotoMetadata.requestId);
     }
     catch(temoto_core::error::ErrorStack& error_stack)
     {
@@ -176,12 +176,12 @@ public:
       {
         // Get the local copy of the query. TODO: replace with std::find
         std::string local_srv_msg_id;
-        std::cout << __func__ << " incoming: " << srv_msg.request.TemotoMetadata.requestId << std::endl;
+        std::cout << __func__ << " incoming: " << srv_msg.response.temotoMetadata.requestId << std::endl;
         for (const auto& local_srv_msg : allocated_external_resources_)
         {
-          std::cout << __func__ << ": " << local_srv_msg.second.request.TemotoMetadata.requestId << std::endl;
-          if (local_srv_msg.second.request.TemotoMetadata.requestId ==
-              srv_msg.request.TemotoMetadata.requestId)
+          std::cout << __func__ << ": " << local_srv_msg.second.response.temotoMetadata.requestId << std::endl;
+          if (local_srv_msg.second.response.temotoMetadata.requestId ==
+              srv_msg.response.temotoMetadata.requestId)
           {
             local_srv_msg_id = local_srv_msg.first;
             break;
@@ -192,12 +192,12 @@ public:
         {
           throw CREATE_ERROR(temoto_core::error::Code::RESOURCE_NOT_FOUND
           , "Could not find a resource with id: '%s'."
-          , srv_msg.request.TemotoMetadata.requestId.c_str());
+          , srv_msg.response.temotoMetadata.requestId.c_str());
         }
 
         TEMOTO_DEBUG_STREAM("Unloading the failed resource");
         resource_registrar_->unload(temoto_er_manager::srv_name::MANAGER
-        , srv_msg.response.TemotoMetadata.requestId);
+        , srv_msg.response.temotoMetadata.requestId);
 
         LoadExtResource new_srv_msg;
         new_srv_msg.request = srv_msg.request;
