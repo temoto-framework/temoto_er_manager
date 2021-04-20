@@ -113,7 +113,6 @@ public:
       resource_registrar_->call<LoadExtResource>(temoto_er_manager::srv_name::MANAGER
       , temoto_er_manager::srv_name::SERVER
       , load_resource_msg
-      , NULL
       , std::bind(&ERManagerInterface::statusInfoCb, this, std::placeholders::_1, std::placeholders::_2));
 
       allocated_external_resources_.emplace(load_resource_msg.response.temotoMetadata.requestId, load_resource_msg);
