@@ -316,7 +316,7 @@ while(ros::ok())
         status_msg.state_ = temoto_resource_registrar::Status::State::FATAL;
         status_msg.message_ = ss.str();
         
-        //srv.request.error_stack = CREATE_ERROR(error::Code::PROCESS_STOPPED, ss.str());
+        //srv.request.error_stack = TEMOTO_ERRSTACK(error::Code::PROCESS_STOPPED, ss.str());
 
         // store statuses to send
         statuses_to_send.push_back(status_msg);
@@ -340,7 +340,7 @@ while(ros::ok())
     {
       resource_registrar_.sendStatus(status_msg);
     }
-    catch (temoto_core::error::ErrorStack& error_stack)
+    catch (resource_registrar::TemotoErrorStack& error_stack)
     {
       TEMOTO_ERROR_STREAM("Unable to send status message:" << status_msg.id_ << "; " << status_msg.message_);
     }
@@ -365,7 +365,7 @@ void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response&
     std::string path = ros::package::getPath(req.package_name);
     if(path.empty())
     {
-      throw CREATE_ERROR(error::Code::PACKAGE_NOT_FOUND, "ROS Package: '%s' was not found.", req.package_name.c_str());
+      throw TEMOTO_ERRSTACK("ROS Package '" + req.package_name + "' was not found.");
     }
 
     // If the executable is a ROS launch file, then check if it exists
@@ -374,9 +374,7 @@ void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response&
     {
       if (!executableExists(path + "/launch/" + req.executable))
       {
-        throw CREATE_ERROR(error::Code::EXECUTABLE_NOT_FOUND,
-                           "ROS Package: '%s' does not contain the requsted launch file '%s'.",
-                           req.package_name.c_str(), req.executable.c_str());
+        throw TEMOTO_ERRSTACK("ROS Package '" + req.package_name + "' does not contain the requsted launch file '" + req.executable + "'");
       }
     }
   }
@@ -386,8 +384,7 @@ void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response&
   }
   else
   {
-    throw CREATE_ERROR(error::Code::ACTION_UNKNOWN, "Action '%s' is not supported.",
-                       req.action.c_str());
+    throw TEMOTO_ERRSTACK("Action '" + req.action + "' is not supported");
   }
 
   TEMOTO_DEBUG("Adding '%s' '%s' '%s' '%s' to the loading queue.", req.action.c_str(),
