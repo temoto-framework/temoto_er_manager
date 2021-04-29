@@ -1,6 +1,3 @@
-# Remote Management Request
-temoto_core/RMPRequest trr
-
 # actions (rosrun or roslaunch) or system command:
 string action
 

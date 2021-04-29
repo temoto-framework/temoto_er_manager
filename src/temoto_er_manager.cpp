@@ -406,7 +406,7 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   // Lookup the requested process by its resource id.
   std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
   std::lock_guard<std::mutex> unload_processes_lock(unloading_mutex_);
-  //TEMOTO_DEBUG("Unloading resource with id '%ld' ...", res.trr.resource_id);
+  TEMOTO_DEBUG_STREAM("Unloading resource with id '" << res.temotoMetadata.requestId);
 
   auto proc_it =
       std::find_if(running_processes_.begin(), running_processes_.end(),
@@ -417,19 +417,14 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   if (proc_it != running_processes_.end())
   {
     unloading_processes_.push_back(proc_it->first);
-    //TEMOTO_DEBUG("Resource with id '%ld' added to unload queue.", res.trr.resource_id);
   }
   else if (failed_proc_it != failed_processes_.end())
   {
     failed_processes_.erase(failed_proc_it);
-    // TEMOTO_DEBUG("Unloaded failed resource with id '%ld'.", res.trr.resource_id);
   }
   else
   {
-    //TEMOTO_ERROR("Unable to unload reource with resource_id: %ld. Resource is not running nor failed.", res.trr.resource_id);
-    // Fill response
-    // res.trr.code = trr::status_codes::FAILED;
-    // res.trr.message = "Resource is not running nor failed. Unable to unload.";
+    throw TEMOTO_ERROR_STACK("Unable to unload reource with id: '" + res.temotoMetadata.requestId + "'. Resource is not running nor failed.");
   }
 }
 
