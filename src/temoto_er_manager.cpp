@@ -424,7 +424,7 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   }
   else
   {
-    throw TEMOTO_ERROR_STACK("Unable to unload reource with id: '" + res.temotoMetadata.requestId + "'. Resource is not running nor failed.");
+    throw TEMOTO_ERRSTACK("Unable to unload reource with id: '" + res.temotoMetadata.requestId + "'. Resource is not running nor failed.");
   }
 }
 
