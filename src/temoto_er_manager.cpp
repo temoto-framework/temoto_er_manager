@@ -47,7 +47,7 @@ ERManager::ERManager()
   /*
    * Add the LoadExtResource server to the resource registrar
    */
-  auto server = std::make_unique<Ros1Server<LoadExtResource>>(srv_name::MANAGER + "_" + srv_name::SERVER
+  auto server = std::make_unique<Ros1Server<LoadExtResource>>(srv_name::SERVER
   , std::bind(&ERManager::loadCb, this, std::placeholders::_1, std::placeholders::_2)
   , std::bind(&ERManager::unloadCb, this, std::placeholders::_1, std::placeholders::_2));
   resource_registrar_.registerServer(std::move(server));
@@ -59,7 +59,7 @@ ERManager::ERManager()
   if (boost::filesystem::exists(rr_catalog_backup_path))
   {
     resource_registrar_.loadCatalog();
-    for (const auto& query : resource_registrar_.getServerQueries<LoadExtResource>(srv_name::MANAGER + "_" + srv_name::SERVER))
+    for (const auto& query : resource_registrar_.getServerQueries<LoadExtResource>(srv_name::SERVER))
     {
       running_processes_.insert({query.response.pid, query});
       ROS_INFO_STREAM(query.request);
@@ -214,7 +214,7 @@ while(ros::ok())
       std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
       srv.response.pid = pid;
       running_processes_.insert({ pid, srv });
-      resource_registrar_.updateQueryResponse<LoadExtResource>(srv_name::MANAGER + "_" + srv_name::SERVER, srv);
+      resource_registrar_.updateQueryResponse<LoadExtResource>(srv_name::SERVER, srv);
       resource_registrar_.saveCatalog();
     }
   }
@@ -338,7 +338,7 @@ while(ros::ok())
   {
     try
     {
-      resource_registrar_.sendStatus(status_msg);
+      resource_registrar_.sendStatus(status_msg.id_, status_msg);
     }
     catch (resource_registrar::TemotoErrorStack& error_stack)
     {
