@@ -108,7 +108,7 @@ ERManager::ERManager()
   resource_unloading_thread_ = std::thread(&ERManager::resourceUnloadLoop, this);;
   resource_status_thread_ = std::thread(&ERManager::resourceStatusLoop, this);;
 
-  TEMOTO_INFO("External Resource Manager is ready.");
+  TEMOTO_INFO_("External Resource Manager is ready.");
 }
 
 ERManager::~ERManager()
@@ -144,7 +144,7 @@ ERManager::~ERManager()
     // If SIGINT did not do the trick, then try SIGTERM
     if (ret != 0)
     {
-      TEMOTO_DEBUG_STREAM("Process with PID=" << running_process.first << " did not stop successfully. " 
+      TEMOTO_DEBUG_STREAM_("Process with PID=" << running_process.first << " did not stop successfully. " 
       "Stopping it via SIGTERM.");
       ret = kill(running_process.first, SIGTERM);
     }
@@ -168,7 +168,7 @@ while(ros::ok())
   // execute each process in loading_processes vector
   for (auto& srv : loading_processes_cpy)
   {
-    TEMOTO_DEBUG_STREAM("Loading resource: " << srv.request);
+    TEMOTO_DEBUG_STREAM_("Loading resource: " << srv.request);
     const std::string& package_name = srv.request.package_name;
     const std::string& executable = srv.request.executable;
     const std::string& args = srv.request.args;
@@ -191,14 +191,14 @@ while(ros::ok())
     }
 
     // Fork the parent process
-    TEMOTO_DEBUG("Forking the process.");
+    TEMOTO_DEBUG_("Forking the process.");
     pid_t pid = fork();
 
     // Child process
     if (pid == 0)
     {
       // Refresh the environment variables
-      TEMOTO_DEBUG_STREAM("Sourcing the .../devel/setup.sh ...");
+      TEMOTO_DEBUG_STREAM_("Sourcing the .../devel/setup.sh ...");
       system(std::string(". " + catkin_workspace_devel_path_ + "setup.sh").c_str());
 
       // Execute the requested process
@@ -207,7 +207,7 @@ while(ros::ok())
     }
 
     // Only parent gets here
-    TEMOTO_DEBUG("Child %d forked.", pid);
+    TEMOTO_DEBUG_("Child %d forked.", pid);
 
     // Closed scope for the lock
     {
@@ -247,19 +247,19 @@ while(ros::ok())
       if (proc_it != running_processes_.end())
       {
         // Kill the process
-        TEMOTO_DEBUG("Sending kill(SIGINT) to %d ...", pid);
+        TEMOTO_DEBUG_("Sending kill(SIGINT) to %d ...", pid);
         int ret = kill(pid, SIGINT);
 
         // If SIGINT did not do the trick, then try SIGTERM
         if (ret != 0)
         {
-          TEMOTO_DEBUG_STREAM("Process with PID=" << pid << " did not stop successfully. " 
+          TEMOTO_DEBUG_STREAM_("Process with PID=" << pid << " did not stop successfully. " 
           "Stopping it via SIGTERM.");
           ret = kill(pid, SIGTERM);
         }
         else
         {
-          TEMOTO_DEBUG_STREAM("Process with PID=" << pid << " was stopped successfully.");
+          TEMOTO_DEBUG_STREAM_("Process with PID=" << pid << " was stopped successfully.");
         }
         
         // Remove the process from the map
@@ -269,7 +269,7 @@ while(ros::ok())
       // Remove it from the failed processes map
       else if(!failed_processes_.erase(pid))
       {
-        TEMOTO_DEBUG("Unable to unload reource with pid: %d. Resource is not running nor marked as failed.", pid);
+        TEMOTO_DEBUG_("Unable to unload reource with pid: %d. Resource is not running nor marked as failed.", pid);
       }
     }
   }
@@ -342,11 +342,11 @@ while(ros::ok())
     }
     catch (resource_registrar::TemotoErrorStack& error_stack)
     {
-      TEMOTO_ERROR_STREAM("Unable to send status message:" << status_msg.id_ << "; " << status_msg.message_);
+      TEMOTO_ERROR_STREAM_("Unable to send status message:" << status_msg.id_ << "; " << status_msg.message_);
     }
     catch (...)
     {
-      TEMOTO_ERROR_STREAM("Caught an unhandled exception");
+      TEMOTO_ERROR_STREAM_("Caught an unhandled exception");
     }
   }
 
@@ -357,7 +357,7 @@ while(ros::ok())
 
 void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response& res)
 {
-  TEMOTO_DEBUG_STREAM("Received a request: " << req);
+  TEMOTO_DEBUG_STREAM_("Received a request: " << req);
 
   // Validate the action command.
   if (req.action == action::ROS_EXECUTE)
@@ -387,7 +387,7 @@ void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response&
     throw TEMOTO_ERRSTACK("Action '" + req.action + "' is not supported");
   }
 
-  TEMOTO_DEBUG("Adding '%s' '%s' '%s' '%s' to the loading queue.", req.action.c_str(),
+  TEMOTO_DEBUG_("Adding '%s' '%s' '%s' '%s' to the loading queue.", req.action.c_str(),
                  req.package_name.c_str(), req.executable.c_str(), req.args.c_str());
 
   temoto_er_manager::LoadExtResource srv;
@@ -406,7 +406,7 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   // Lookup the requested process by its resource id.
   std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
   std::lock_guard<std::mutex> unload_processes_lock(unloading_mutex_);
-  TEMOTO_DEBUG_STREAM("Unloading resource with id '" << res.temotoMetadata.requestId);
+  TEMOTO_DEBUG_STREAM_("Unloading resource with id '" << res.temotoMetadata.requestId);
 
   auto proc_it =
       std::find_if(running_processes_.begin(), running_processes_.end(),
@@ -432,7 +432,7 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   {
     while (!m.try_lock())
     {
-      TEMOTO_DEBUG("Waiting for lock()");
+      TEMOTO_DEBUG_("Waiting for lock()");
       ros::Duration(0.1).sleep();  // sleep for few ms
     }
   }
