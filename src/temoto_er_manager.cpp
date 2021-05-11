@@ -356,7 +356,7 @@ while(ros::ok())
 }
 
 void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response& res)
-{
+{ START_SPAN
   TEMOTO_DEBUG_STREAM_("Received a request: " << req);
 
   // Validate the action command.
