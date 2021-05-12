@@ -204,7 +204,8 @@ public:
         TEMOTO_DEBUG_STREAM("Asking the same resource again");
         resource_registrar_->call<LoadExtResource>(temoto_er_manager::srv_name::MANAGER
         , temoto_er_manager::srv_name::SERVER
-        , new_srv_msg);
+        , new_srv_msg
+        , std::bind(&ERManagerInterface::statusInfoCb, this, std::placeholders::_1, std::placeholders::_2));
 
         allocated_external_resources_[local_srv_msg_id] = new_srv_msg;
       }

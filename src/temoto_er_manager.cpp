@@ -295,12 +295,24 @@ while(ros::ok())
     while (proc_it != running_processes_.end())
     {
       int status;
-      //int kill_response = waitpid(proc_it->first, &status, WNOHANG);
+      int waitpid_response =  waitpid(proc_it->first, &status, WNOHANG);
       int kill_response = kill(proc_it->first, 0);
-      // If the child process has stopped running,
-      if (kill_response != 0)
+      
+      /*
+       * Check both 'waitpid' and 'kill' syscall responses, because if the er_manager
+       * was recovered after a failure, it has lost the ownership of all child processes
+       * it has spawned. Thus 'waitpid' will always return a nonzero result, even if the
+       * ex-child process is actually alive. Therefore 'kill' is additionally used to
+       * determine whether the ex-child process actually exists, or not. Just checking
+       * the 'kill' wont work either, as it cannot tell whether the child is a zombie process or
+       * not. It all comes down to "who reaps the child". If er_manager hasn't crashed, then
+       * OS expects er_manager to reap child processes (via wait or waitpid). If the er_manager
+       * has recovered from a crash, all ex-children are adopted by OS (init) and thus the
+       * OS will manage the reaping (hence just checking the 'kill' will suffice then).
+       */
+      if (waitpid_response != 0 && kill_response != 0)
       {
-        TEMOTO_ERROR("Process %d ('%s' '%s' '%s') has stopped. waitpid = %d"
+        TEMOTO_WARN_("Process %d ('%s' '%s' '%s') has stopped. waitpid = %d"
         , proc_it->first
         , proc_it->second.request.action.c_str()
         , proc_it->second.request.package_name.c_str()
