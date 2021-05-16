@@ -14,10 +14,10 @@ string executable
 # additional arguments
 string args
 
-temoto_resource_registrar/TemotoRequestMetadata temotoMetadata
+temoto_resource_registrar/TemotoRequestMetadata temoto_metadata
 ---
 
 # The process id of the loaded resource
 int32 pid
 
-temoto_resource_registrar/TemotoResponseMetadata temotoMetadata
+temoto_resource_registrar/TemotoResponseMetadata temoto_metadata

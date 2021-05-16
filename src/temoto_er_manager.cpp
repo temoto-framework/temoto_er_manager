@@ -324,7 +324,7 @@ while(ros::ok())
         ss << "The process with pid '" << proc_it->first << "' has stopped.";
 
         temoto_resource_registrar::Status status_msg;
-        status_msg.id_ = proc_it->second.response.temotoMetadata.requestId;
+        status_msg.id_ = proc_it->second.response.temoto_metadata.request_id;
         status_msg.state_ = temoto_resource_registrar::Status::State::FATAL;
         status_msg.message_ = ss.str();
         
@@ -418,7 +418,7 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   // Lookup the requested process by its resource id.
   std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
   std::lock_guard<std::mutex> unload_processes_lock(unloading_mutex_);
-  TEMOTO_DEBUG_STREAM_("Unloading resource with id '" << res.temotoMetadata.requestId);
+  TEMOTO_DEBUG_STREAM_("Unloading resource with id '" << res.temoto_metadata.request_id);
 
   auto proc_it =
       std::find_if(running_processes_.begin(), running_processes_.end(),
@@ -436,7 +436,7 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   }
   else
   {
-    throw TEMOTO_ERRSTACK("Unable to unload reource with id: '" + res.temotoMetadata.requestId + "'. Resource is not running nor failed.");
+    throw TEMOTO_ERRSTACK("Unable to unload reource with id: '" + res.temoto_metadata.request_id + "'. Resource is not running nor failed.");
   }
 }
 
