@@ -18,16 +18,15 @@
 #define TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_H
 
 #include "rr/ros1_resource_registrar.h"
-#include "temoto_core/common/base_subsystem.h"
 #include "temoto_er_manager/temoto_er_manager_services.h"
-#include <stdio.h> //pid_t TODO: check where pid_t actually is
+#include <unistd.h>
 #include <mutex>
 #include <thread>
 #include <sys/stat.h>
 
 namespace temoto_er_manager
 {
-class ERManager : public temoto_core::BaseSubsystem
+class ERManager
 {
 public:
 
@@ -68,8 +67,8 @@ private:
   void waitForLock(std::mutex& m);
   inline bool executableExists (const std::string& name)
   {
-      struct stat buffer;
-      return (stat(name.c_str(), &buffer) == 0);
+    struct stat buffer;
+    return (stat(name.c_str(), &buffer) == 0);
   }
 };
 }

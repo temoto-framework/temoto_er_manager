@@ -14,7 +14,6 @@
  * limitations under the License.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdio.h>
 #include <csignal>
 #include <sys/wait.h>
 #include <algorithm>
@@ -30,8 +29,7 @@ namespace temoto_er_manager
 using namespace temoto_core;
 
 ERManager::ERManager() 
-: BaseSubsystem( "temoto_er_manager", error::Subsystem::PROCESS_MANAGER, __func__)
-, resource_registrar_(srv_name::MANAGER)
+: resource_registrar_(srv_name::MANAGER)
 {
   /*
    * Configure the RR catalog backup routine

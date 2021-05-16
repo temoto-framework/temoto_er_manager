@@ -1,51 +1,41 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Copyright 2019 TeMoto Telerobotics
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #ifndef TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_INTERFACE_H
 #define TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_INTERFACE_H
 
-#include "temoto_core/common/base_subsystem.h"
 #include "rr/ros1_resource_registrar.h"
-
 #include "temoto_er_manager/temoto_er_manager_services.h"
 #include <memory>
 #include <ctime>
 #include <functional>
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *
- *                   EXTERNAL RESOURCE MANAGER INTERFACE
- *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
 namespace temoto_er_manager
 {
-class ERManagerInterface : public temoto_core::BaseSubsystem
+class ERManagerInterface
 {
 public:
 
   ERManagerInterface(bool initialize_interface = false)
   : unique_suffix_(std::to_string(createID()))
-  , has_owner_(false)
   , initialized_(false)
   {
-    class_name_ = __func__;
     if (initialize_interface)
     {
       initialize();
-    }
-  }
-
-  void initialize(const BaseSubsystem& owner)
-  {
-    if (!initialized_)
-    {
-      initializeBase(owner);
-      log_group_ = "interfaces." + owner.subsystem_name_;
-      rr_name_ = owner.class_name_ + "/" + class_name_ + "_" + unique_suffix_;
-      has_owner_ = true;
-      initialize();
-    }
-    else
-    {
-      TEMOTO_WARN_STREAM("The External Resource Manager interface is already initialized");
     }
   }
 
@@ -53,21 +43,18 @@ public:
   {
     if (!initialized_)
     {
-      if (!has_owner_)
-      {
-        rr_name_ = class_name_ + "_" + unique_suffix_;
-      }
+      rr_name_ = TEMOTO_LOG_ATTR.getSubsystemNameWithSlash() + GET_CLASS_NAME + "_" + unique_suffix_;
       resource_registrar_ = std::make_unique<temoto_resource_registrar::ResourceRegistrarRos1>(rr_name_);
       resource_registrar_->init();
       initialized_ = true;
     }
     else
     {
-      TEMOTO_WARN_STREAM("The External Resource Manager interface is already initialized");
+      TEMOTO_WARN_STREAM_("The External Resource Manager interface is already initialized");
     }
   }
 
-   unsigned int createID()
+  unsigned int createID()
   {
     std::srand(std::time(nullptr));
     return std::rand();
@@ -117,9 +104,9 @@ public:
 
       allocated_external_resources_.emplace(load_resource_msg.response.temoto_metadata.request_id, load_resource_msg);
     }
-    catch(temoto_core::error::ErrorStack& error_stack)
+    catch(resource_registrar::TemotoErrorStack e)
     {
-      throw FORWARD_ERROR(error_stack);
+      throw FWD_TEMOTO_ERRSTACK(e);
     }
     return;
   }
@@ -130,9 +117,9 @@ public:
     {
       validateInterface();
     }
-    catch (temoto_core::error::ErrorStack& error_stack)
+    catch (resource_registrar::TemotoErrorStack e)
     {
-      throw FORWARD_ERROR(error_stack);
+      throw FWD_TEMOTO_ERRSTACK(e);
     }
 
     try
@@ -142,9 +129,9 @@ public:
       resource_registrar_->unload(temoto_er_manager::srv_name::MANAGER, resource_id);
       allocated_external_resources_.erase(load_resource_msg.response.temoto_metadata.request_id);
     }
-    catch(temoto_core::error::ErrorStack& error_stack)
+    catch(resource_registrar::TemotoErrorStack e)
     {
-      throw FORWARD_ERROR(error_stack);
+      throw FWD_TEMOTO_ERRSTACK(e);
     }
   }
 
@@ -154,18 +141,18 @@ public:
     {
       validateInterface();
     }
-    catch (temoto_core::error::ErrorStack& error_stack)
+    catch (resource_registrar::TemotoErrorStack e)
     {
-      throw FORWARD_ERROR(error_stack);
+      throw FWD_TEMOTO_ERRSTACK(e);
     }
-    TEMOTO_ERROR_STREAM("status info was received ...");
+    TEMOTO_ERROR_STREAM_("status info was received ...");
     
     /*
      * Check if the owner has a status routine defined
      */
     if (user_status_callback_)
     {
-      TEMOTO_DEBUG_STREAM("Invoking user-registered status callback");
+      TEMOTO_DEBUG_STREAM_("Invoking user-registered status callback");
       user_status_callback_(srv_msg, status_msg);
       return;
     }
@@ -189,19 +176,17 @@ public:
 
         if (local_srv_msg_id.empty())
         {
-          throw CREATE_ERROR(temoto_core::error::Code::RESOURCE_NOT_FOUND
-          , "Could not find a resource with id: '%s'."
-          , srv_msg.response.temoto_metadata.request_id.c_str());
+          throw TEMOTO_ERRSTACK("Could not find a resource with id: " + srv_msg.response.temoto_metadata.request_id);
         }
 
-        TEMOTO_DEBUG_STREAM("Unloading the failed resource");
+        TEMOTO_DEBUG_STREAM_("Unloading the failed resource");
         resource_registrar_->unload(temoto_er_manager::srv_name::MANAGER
         , srv_msg.response.temoto_metadata.request_id);
 
         LoadExtResource new_srv_msg;
         new_srv_msg.request = srv_msg.request;
 
-        TEMOTO_DEBUG_STREAM("Asking the same resource again");
+        TEMOTO_DEBUG_STREAM_("Asking the same resource again");
         resource_registrar_->call<LoadExtResource>(temoto_er_manager::srv_name::MANAGER
         , temoto_er_manager::srv_name::SERVER
         , new_srv_msg
@@ -209,9 +194,9 @@ public:
 
         allocated_external_resources_[local_srv_msg_id] = new_srv_msg;
       }
-      catch(temoto_core::error::ErrorStack& error_stack)
+      catch(resource_registrar::TemotoErrorStack e)
       {
-        throw FORWARD_ERROR(error_stack);
+        throw FWD_TEMOTO_ERRSTACK(e);
       }
     }
   }
@@ -236,7 +221,6 @@ public:
 private:
   std::string rr_name_;
   std::string unique_suffix_;
-  bool has_owner_;
   bool initialized_;
   std::map<std::string, LoadExtResource> allocated_external_resources_;
   std::unique_ptr<temoto_resource_registrar::ResourceRegistrarRos1> resource_registrar_;
@@ -247,7 +231,10 @@ private:
    */
   void validateInterface()
   {
-    // TODO: Deprecated, to be removed.
+    if (!initialized_)
+    {
+      TEMOTO_WARN_STREAM_("The External Resource Manager interface is not initialized");
+    }
   }
 };
 
