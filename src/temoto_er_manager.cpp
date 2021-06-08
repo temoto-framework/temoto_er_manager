@@ -166,7 +166,9 @@ while(ros::ok())
   // execute each process in loading_processes vector
   for (auto& srv : loading_processes_cpy)
   {
-    TEMOTO_DEBUG_STREAM_("Loading resource: " << srv.request);
+    std::cout << std::endl;
+    TEMOTO_INFO_STREAM_("Loading resource: \n" << srv.request);
+
     const std::string& package_name = srv.request.package_name;
     const std::string& executable = srv.request.executable;
     const std::string& args = srv.request.args;
@@ -267,7 +269,7 @@ while(ros::ok())
       // Remove it from the failed processes map
       else if(!failed_processes_.erase(pid))
       {
-        TEMOTO_DEBUG_("Unable to unload reource with pid: %d. Resource is not running nor marked as failed.", pid);
+        TEMOTO_WARN_("Unable to unload reource with pid: %d. Resource is not running nor marked as failed.", pid);
       }
     }
   }
@@ -416,7 +418,9 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   // Lookup the requested process by its resource id.
   std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
   std::lock_guard<std::mutex> unload_processes_lock(unloading_mutex_);
-  TEMOTO_DEBUG_STREAM_("Unloading resource with id '" << res.temoto_metadata.request_id);
+
+  std::cout << std::endl;
+  TEMOTO_INFO_STREAM_("Unloading resource: \n" << req);
 
   auto proc_it =
       std::find_if(running_processes_.begin(), running_processes_.end(),
