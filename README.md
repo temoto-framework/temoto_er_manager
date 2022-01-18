@@ -8,8 +8,8 @@ that ERM is managing.
 Install ERM package
 ``` bash
 cd catkin_ws/src
-git clone https://github.com/temoto-telerobotics/temoto_er_manager
+git clone https://github.com/temoto-framework/temoto_er_manager
 ```
 
 ## Examples
-See [this example](https://github.com/temoto-telerobotics/temoto_er_manager/blob/main/examples/test_er_client_node.cpp) of how ERM can be embedded in your code.
+See [this example](https://github.com/temoto-framework/temoto_er_manager/blob/main/examples/test_er_client_node.cpp) of how ERM can be embedded in your code.
