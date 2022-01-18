@@ -26,7 +26,6 @@
 
 namespace temoto_er_manager
 {
-using namespace temoto_core;
 
 ERManager::ERManager() 
 : resource_registrar_(srv_name::MANAGER)
@@ -179,7 +178,7 @@ while(ros::ok())
     {
       if (srv.request.ros_namespace != "")
       {
-        cmd += "ROS_NAMESPACE=" + common::getAbsolutePath(srv.request.ros_namespace) + " ";
+        cmd += "ROS_NAMESPACE=/" + TEMOTO_LOG_ATTR.getNs() + "/" + srv.request.ros_namespace + " ";
       }
       std::regex rx(".*\\.launch$");
       cmd += (std::regex_match(executable, rx)) ? "roslaunch " : "rosrun ";

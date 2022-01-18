@@ -12,7 +12,6 @@
   <depend>roslib</depend>
   <depend>std_msgs</depend>
 	<depend>message_generation</depend>
-  <depend>temoto_core</depend>
   <depend>temoto_resource_registrar</depend>
 
 </package>

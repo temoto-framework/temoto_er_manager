@@ -1,7 +1,7 @@
 #include "ros/ros.h"
 #include "temoto_er_manager/temoto_er_manager_interface.h"
 
-void resourceFailureCallback(temoto_er_manager::LoadExtResource load_resource_msg)
+void resourceFailureCallback(temoto_er_manager::LoadExtResource load_resource_msg, temoto_resource_registrar::Status status_msg)
 {
   ROS_WARN_STREAM("The following resource stopped unexpectedly\n" << load_resource_msg.request);
 }

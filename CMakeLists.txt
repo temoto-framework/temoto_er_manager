@@ -11,7 +11,6 @@ find_package(catkin REQUIRED
   roscpp
   roslib
   std_msgs
-  temoto_core
   temoto_resource_registrar
 )
 
@@ -23,13 +22,12 @@ add_service_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
-  temoto_core
   temoto_resource_registrar
 )
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS roscpp roslib std_msgs temoto_core temoto_resource_registrar
+  CATKIN_DEPENDS roscpp roslib std_msgs temoto_resource_registrar
 )
 
 include_directories(
