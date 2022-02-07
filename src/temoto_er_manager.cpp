@@ -176,10 +176,15 @@ while(ros::ok())
 
     if (srv.request.action == action::ROS_EXECUTE)
     {
-      if (srv.request.ros_namespace != "")
+      if (srv.request.ros_namespace.empty())
       {
-        cmd += "ROS_NAMESPACE=/" + TEMOTO_LOG_ATTR.getNs() + "/" + srv.request.ros_namespace + " ";
+        cmd += "ROS_NAMESPACE=/" + TEMOTO_LOG_ATTR.getNs() + " ";
       }
+      else
+      {
+        cmd += "ROS_NAMESPACE=/" + srv.request.ros_namespace + " ";
+      }
+      
       std::regex rx(".*\\.launch$");
       cmd += (std::regex_match(executable, rx)) ? "roslaunch " : "rosrun ";
       cmd += package_name + " " + executable + " " + args;
