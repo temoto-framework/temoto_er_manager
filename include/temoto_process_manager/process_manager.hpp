@@ -14,29 +14,29 @@
  * limitations under the License.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_H
-#define TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_H
+#ifndef TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_H
+#define TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_H
 
 #include "rr/ros1_resource_registrar.h"
-#include "temoto_er_manager/temoto_er_manager_services.h"
+#include "temoto_process_manager/process_manager_services.hpp"
 #include <unistd.h>
 #include <mutex>
 #include <thread>
 #include <sys/stat.h>
 
-namespace temoto_er_manager
+namespace temoto_process_manager
 {
-class ERManager
+class ProcessManager
 {
 public:
 
-  ERManager ();
-  virtual ~ERManager ();
+  ProcessManager ();
+  virtual ~ProcessManager ();
 
-  std::string formatRequest(LoadExtResource::Request& req);
-  void formatResponse(LoadExtResource::Response &res, int code, std::string message);
-  void loadCb(LoadExtResource::Request &req, LoadExtResource::Response &res);
-  void unloadCb(LoadExtResource::Request &req, LoadExtResource::Response &res);
+  std::string formatRequest(LoadProcess::Request& req);
+  void formatResponse(LoadProcess::Response &res, int code, std::string message);
+  void loadCb(LoadProcess::Request &req, LoadProcess::Response &res);
+  void unloadCb(LoadProcess::Request &req, LoadProcess::Response &res);
   void resourceLoadLoop();
   void resourceUnloadLoop();
   void resourceStatusLoop();
@@ -45,9 +45,9 @@ private:
 
   // TODO: This section should be replaced by a single container which also holds
   // the state of each process.
-  std::vector<LoadExtResource> loading_processes_;
-  std::map<pid_t, LoadExtResource> running_processes_;
-  std::map<pid_t, LoadExtResource> failed_processes_;
+  std::vector<LoadProcess> loading_processes_;
+  std::map<pid_t, LoadProcess> running_processes_;
+  std::map<pid_t, LoadProcess> failed_processes_;
   std::vector<pid_t> unloading_processes_;
   std::string catkin_workspace_devel_path_;
 

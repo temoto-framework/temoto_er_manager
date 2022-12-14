@@ -1,14 +1,14 @@
-#ifndef TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_SERVICES_H
-#define TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_SERVICES_H
+#ifndef TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_SERVICES_H
+#define TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_SERVICES_H
 
 #include <string>
-#include "temoto_er_manager/LoadExtResource.h"
+#include "temoto_process_manager/LoadProcess.h"
 
-namespace temoto_er_manager
+namespace temoto_process_manager
 {
 	namespace srv_name
 	{
-		const std::string MANAGER = "temoto_er_manager";
+		const std::string MANAGER = "temoto_process_manager";
 		const std::string SERVER = "load_external_resource";
 	}
 
@@ -22,8 +22,8 @@ namespace temoto_er_manager
 // Define the equality operators for load/unload service requests.
 // This will define whether the resource server fires our callback
 // or considers resource already open and returns prevous response.
-static bool operator==( const temoto_er_manager::LoadExtResource::Request& r1
-		                  , const temoto_er_manager::LoadExtResource::Request& r2 )
+static bool operator==( const temoto_process_manager::LoadProcess::Request& r1
+		                  , const temoto_process_manager::LoadProcess::Request& r2 )
 {
 	return(
 			r1.action == r2.action &&

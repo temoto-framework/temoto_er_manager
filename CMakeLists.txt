@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(temoto_er_manager)
+project(temoto_process_manager)
 add_compile_options(-std=c++14)
 
 option(TEMOTO_ENABLE_TRACING_ "Use tracer" OFF)
@@ -16,7 +16,7 @@ find_package(catkin REQUIRED
 
 add_service_files(
   FILES
-  LoadExtResource.srv
+  LoadProcess.srv
 )
 
 generate_messages(
@@ -35,21 +35,21 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(temoto_er_manager 
-  src/temoto_er_manager.cpp
-  src/temoto_er_manager_node.cpp
+add_executable(temoto_process_manager 
+  src/process_manager.cpp
+  src/process_manager_node.cpp
 )
 
-add_dependencies(temoto_er_manager 
+add_dependencies(temoto_process_manager 
   ${catkin_EXPORTED_TARGETS}
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
 )
 
-target_link_libraries( temoto_er_manager 
+target_link_libraries(temoto_process_manager 
   ${catkin_LIBRARIES}
 )
 
-install(TARGETS temoto_er_manager
+install(TARGETS temoto_process_manager
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

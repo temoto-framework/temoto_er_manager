@@ -22,12 +22,12 @@
 #include <functional>
 #include <boost/filesystem.hpp>
 #include "ros/package.h"
-#include "temoto_er_manager/temoto_er_manager.h"
+#include "temoto_process_manager/process_manager.hpp"
 
-namespace temoto_er_manager
+namespace temoto_process_manager
 {
 
-ERManager::ERManager() 
+ProcessManager::ProcessManager() 
 : resource_registrar_(srv_name::MANAGER)
 {
   /*
@@ -42,11 +42,11 @@ ERManager::ERManager()
   resource_registrar_.updateConfiguration(rr_catalog_config_);
 
   /*
-   * Add the LoadExtResource server to the resource registrar
+   * Add the LoadProcess server to the resource registrar
    */
-  auto server = std::make_unique<Ros1Server<LoadExtResource>>(srv_name::SERVER
-  , std::bind(&ERManager::loadCb, this, std::placeholders::_1, std::placeholders::_2)
-  , std::bind(&ERManager::unloadCb, this, std::placeholders::_1, std::placeholders::_2));
+  auto server = std::make_unique<Ros1Server<LoadProcess>>(srv_name::SERVER
+  , std::bind(&ProcessManager::loadCb, this, std::placeholders::_1, std::placeholders::_2)
+  , std::bind(&ProcessManager::unloadCb, this, std::placeholders::_1, std::placeholders::_2));
   resource_registrar_.registerServer(std::move(server));
   resource_registrar_.init();
   
@@ -56,7 +56,7 @@ ERManager::ERManager()
   if (boost::filesystem::exists(rr_catalog_backup_path))
   {
     resource_registrar_.loadCatalog();
-    for (const auto& query : resource_registrar_.getServerQueries<LoadExtResource>(srv_name::SERVER))
+    for (const auto& query : resource_registrar_.getServerQueries<LoadProcess>(srv_name::SERVER))
     {
       running_processes_.insert({query.response.pid, query});
       ROS_INFO_STREAM(query.request);
@@ -101,14 +101,14 @@ ERManager::ERManager()
   catkin_workspace_devel_path_ += "devel/";
 
   // Start the load, unload and status monitoring threads
-  resource_loading_thread_ = std::thread(&ERManager::resourceLoadLoop, this);;  
-  resource_unloading_thread_ = std::thread(&ERManager::resourceUnloadLoop, this);;
-  resource_status_thread_ = std::thread(&ERManager::resourceStatusLoop, this);;
+  resource_loading_thread_ = std::thread(&ProcessManager::resourceLoadLoop, this);;  
+  resource_unloading_thread_ = std::thread(&ProcessManager::resourceUnloadLoop, this);;
+  resource_status_thread_ = std::thread(&ProcessManager::resourceStatusLoop, this);;
 
-  TEMOTO_INFO_("External Resource Manager is ready.");
+  TEMOTO_INFO_(" Manager is ready.");
 }
 
-ERManager::~ERManager()
+ProcessManager::~ProcessManager()
 {
   while (!resource_loading_thread_.joinable())
   {
@@ -148,12 +148,12 @@ ERManager::~ERManager()
   }
 }
 
-void ERManager::resourceLoadLoop()
+void ProcessManager::resourceLoadLoop()
 {
 while(ros::ok())
 {
   // Make a copy of the loading_processes_ vector so that the original could be released for other threads
-  std::vector<LoadExtResource> loading_processes_cpy;
+  std::vector<LoadProcess> loading_processes_cpy;
 
   // Closed scope for the lock
   {
@@ -218,7 +218,7 @@ while(ros::ok())
       std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
       srv.response.pid = pid;
       running_processes_.insert({ pid, srv });
-      resource_registrar_.updateQueryResponse<LoadExtResource>(srv_name::SERVER, srv);
+      resource_registrar_.updateQueryResponse<LoadProcess>(srv_name::SERVER, srv);
       resource_registrar_.saveCatalog();
     }
   }
@@ -228,7 +228,7 @@ while(ros::ok())
 }
 }
 
-void ERManager::resourceUnloadLoop()
+void ProcessManager::resourceUnloadLoop()
 {
 while(ros::ok())
 {
@@ -283,7 +283,7 @@ while(ros::ok())
 } 
 }
 
-void ERManager::resourceStatusLoop()
+void ProcessManager::resourceStatusLoop()
 {
 while(ros::ok())
 {
@@ -371,7 +371,7 @@ while(ros::ok())
 } 
 }
 
-void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response& res)
+void ProcessManager::loadCb(LoadProcess::Request& req, LoadProcess::Response& res)
 { START_SPAN
   TEMOTO_DEBUG_STREAM_("Received a request: " << req);
 
@@ -406,7 +406,7 @@ void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response&
   TEMOTO_DEBUG_("Adding '%s' '%s' '%s' '%s' to the loading queue.", req.action.c_str(),
                  req.package_name.c_str(), req.executable.c_str(), req.args.c_str());
 
-  temoto_er_manager::LoadExtResource srv;
+  temoto_process_manager::LoadProcess srv;
   srv.request = req;
   srv.response = res;
 
@@ -417,7 +417,7 @@ void ERManager::loadCb(LoadExtResource::Request& req, LoadExtResource::Response&
   }
 }
 
-void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Response& res)
+void ProcessManager::unloadCb(LoadProcess::Request& req, LoadProcess::Response& res)
 {
   // Lookup the requested process by its resource id.
   std::lock_guard<std::mutex> running_processes_lock(running_mutex_);
@@ -428,10 +428,10 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
 
   auto proc_it =
       std::find_if(running_processes_.begin(), running_processes_.end(),
-                   [&](const std::pair< pid_t, temoto_er_manager::LoadExtResource>& p) -> bool { return p.second.response.pid == res.pid; });
+                   [&](const std::pair< pid_t, temoto_process_manager::LoadProcess>& p) -> bool { return p.second.response.pid == res.pid; });
   auto failed_proc_it =
       std::find_if(failed_processes_.begin(), failed_processes_.end(),
-                   [&](const std::pair< pid_t, temoto_er_manager::LoadExtResource>& p) -> bool { return p.second.response.pid == res.pid; });
+                   [&](const std::pair< pid_t, temoto_process_manager::LoadProcess>& p) -> bool { return p.second.response.pid == res.pid; });
   if (proc_it != running_processes_.end())
   {
     unloading_processes_.push_back(proc_it->first);
@@ -446,7 +446,7 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
   }
 }
 
-  void ERManager::waitForLock(std::mutex& m)
+  void ProcessManager::waitForLock(std::mutex& m)
   {
     while (!m.try_lock())
     {
@@ -454,4 +454,4 @@ void ERManager::unloadCb(LoadExtResource::Request& req, LoadExtResource::Respons
       ros::Duration(0.1).sleep();  // sleep for few ms
     }
   }
-}  // namespace temoto_er_manager
+}  // namespace temoto_process_manager

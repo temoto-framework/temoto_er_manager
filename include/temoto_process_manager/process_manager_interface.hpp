@@ -14,22 +14,22 @@
  * limitations under the License.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_INTERFACE_H
-#define TEMOTO_ER_MANAGER__TEMOTO_ER_MANAGER_INTERFACE_H
+#ifndef TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_INTERFACE_H
+#define TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_INTERFACE_H
 
 #include "rr/ros1_resource_registrar.h"
-#include "temoto_er_manager/temoto_er_manager_services.h"
+#include "temoto_process_manager/process_manager_services.hpp"
 #include <memory>
 #include <ctime>
 #include <functional>
 
-namespace temoto_er_manager
+namespace temoto_process_manager
 {
-class ERManagerInterface
+class ProcessManagerInterface
 {
 public:
 
-  ERManagerInterface(bool initialize_interface = false)
+  ProcessManagerInterface(bool initialize_interface = false)
   : unique_suffix_(std::to_string(createID()))
   , initialized_(false)
   {
@@ -50,7 +50,7 @@ public:
     }
     else
     {
-      TEMOTO_WARN_STREAM_("The External Resource Manager interface is already initialized");
+      TEMOTO_WARN_STREAM_("The  Manager interface is already initialized");
     }
   }
 
@@ -60,49 +60,49 @@ public:
     return std::rand();
   }
 
-  LoadExtResource loadRosResource(const std::string& package_name
+  LoadProcess loadRosResource(const std::string& package_name
   , const std::string& ros_program_name
   , const std::string& args = "")
   {
     validateInterface();
 
-    temoto_er_manager::LoadExtResource load_resource_msg;
-    load_resource_msg.request.action = temoto_er_manager::action::ROS_EXECUTE;
-    load_resource_msg.request.package_name = package_name;
-    load_resource_msg.request.executable = ros_program_name;
-    load_resource_msg.request.args = args;
+    temoto_process_manager::LoadProcess load_process_msg;
+    load_process_msg.request.action = temoto_process_manager::action::ROS_EXECUTE;
+    load_process_msg.request.package_name = package_name;
+    load_process_msg.request.executable = ros_program_name;
+    load_process_msg.request.args = args;
 
-    loadResource(load_resource_msg);
-    return load_resource_msg;
+    loadResource(load_process_msg);
+    return load_process_msg;
   }
 
-  LoadExtResource loadSysResource(const std::string& sys_program_name
+  LoadProcess loadSysResource(const std::string& sys_program_name
   , const std::string& arguments = "")
   {
     validateInterface();
 
-    temoto_er_manager::LoadExtResource load_resource_msg;
-    load_resource_msg.request.action = temoto_er_manager::action::SYS_EXECUTE;
-    load_resource_msg.request.executable = sys_program_name;
-    load_resource_msg.request.args = arguments;
+    temoto_process_manager::LoadProcess load_process_msg;
+    load_process_msg.request.action = temoto_process_manager::action::SYS_EXECUTE;
+    load_process_msg.request.executable = sys_program_name;
+    load_process_msg.request.args = arguments;
 
-    loadResource(load_resource_msg);
-    return load_resource_msg;
+    loadResource(load_process_msg);
+    return load_process_msg;
   }
 
-  void loadResource(LoadExtResource& load_resource_msg)
+  void loadResource(LoadProcess& load_process_msg)
   {
     validateInterface();
 
     // Call the server
     try
     {
-      resource_registrar_->call<LoadExtResource>(temoto_er_manager::srv_name::MANAGER
-      , temoto_er_manager::srv_name::SERVER
-      , load_resource_msg
-      , std::bind(&ERManagerInterface::statusInfoCb, this, std::placeholders::_1, std::placeholders::_2));
+      resource_registrar_->call<LoadProcess>(temoto_process_manager::srv_name::MANAGER
+      , temoto_process_manager::srv_name::SERVER
+      , load_process_msg
+      , std::bind(&ProcessManagerInterface::statusInfoCb, this, std::placeholders::_1, std::placeholders::_2));
 
-      allocated_external_resources_.emplace(load_resource_msg.response.temoto_metadata.request_id, load_resource_msg);
+      allocated_processes_.emplace(load_process_msg.response.temoto_metadata.request_id, load_process_msg);
     }
     catch(resource_registrar::TemotoErrorStack e)
     {
@@ -111,7 +111,7 @@ public:
     return;
   }
 
-  void unloadResource(const LoadExtResource& load_resource_msg)
+  void unloadResource(const LoadProcess& load_process_msg)
   {
     try
     {
@@ -124,10 +124,10 @@ public:
 
     try
     {
-      auto resource_id = allocated_external_resources_.at(load_resource_msg.response.temoto_metadata.request_id).response.temoto_metadata.request_id;
+      auto resource_id = allocated_processes_.at(load_process_msg.response.temoto_metadata.request_id).response.temoto_metadata.request_id;
 
-      resource_registrar_->unload(temoto_er_manager::srv_name::MANAGER, resource_id);
-      allocated_external_resources_.erase(load_resource_msg.response.temoto_metadata.request_id);
+      resource_registrar_->unload(temoto_process_manager::srv_name::MANAGER, resource_id);
+      allocated_processes_.erase(load_process_msg.response.temoto_metadata.request_id);
     }
     catch(resource_registrar::TemotoErrorStack e)
     {
@@ -135,7 +135,7 @@ public:
     }
   }
 
-  void statusInfoCb(LoadExtResource srv_msg, temoto_resource_registrar::Status status_msg)
+  void statusInfoCb(LoadProcess srv_msg, temoto_resource_registrar::Status status_msg)
   {
     try
     {
@@ -163,7 +163,7 @@ public:
         // Get the local copy of the query. TODO: replace with std::find
         std::string local_srv_msg_id;
         std::cout << __func__ << " incoming: " << srv_msg.response.temoto_metadata.request_id << std::endl;
-        for (const auto& local_srv_msg : allocated_external_resources_)
+        for (const auto& local_srv_msg : allocated_processes_)
         {
           std::cout << __func__ << ": " << local_srv_msg.second.response.temoto_metadata.request_id << std::endl;
           if (local_srv_msg.second.response.temoto_metadata.request_id ==
@@ -180,19 +180,19 @@ public:
         }
 
         TEMOTO_DEBUG_STREAM_("Unloading the failed resource");
-        resource_registrar_->unload(temoto_er_manager::srv_name::MANAGER
+        resource_registrar_->unload(temoto_process_manager::srv_name::MANAGER
         , srv_msg.response.temoto_metadata.request_id);
 
-        LoadExtResource new_srv_msg;
+        LoadProcess new_srv_msg;
         new_srv_msg.request = srv_msg.request;
 
         TEMOTO_DEBUG_STREAM_("Asking the same resource again");
-        resource_registrar_->call<LoadExtResource>(temoto_er_manager::srv_name::MANAGER
-        , temoto_er_manager::srv_name::SERVER
+        resource_registrar_->call<LoadProcess>(temoto_process_manager::srv_name::MANAGER
+        , temoto_process_manager::srv_name::SERVER
         , new_srv_msg
-        , std::bind(&ERManagerInterface::statusInfoCb, this, std::placeholders::_1, std::placeholders::_2));
+        , std::bind(&ProcessManagerInterface::statusInfoCb, this, std::placeholders::_1, std::placeholders::_2));
 
-        allocated_external_resources_[local_srv_msg_id] = new_srv_msg;
+        allocated_processes_[local_srv_msg_id] = new_srv_msg;
       }
       catch(resource_registrar::TemotoErrorStack e)
       {
@@ -204,12 +204,12 @@ public:
   /**
    * @brief registerUpdateCallback
    */
-  void registerUpdateCallback( std::function<void(LoadExtResource, temoto_resource_registrar::Status)> user_status_callback)
+  void registerUpdateCallback( std::function<void(LoadProcess, temoto_resource_registrar::Status)> user_status_callback)
   {
     user_status_callback_ = user_status_callback;
   }
 
-  ~ERManagerInterface()
+  ~ProcessManagerInterface()
   {
   }
 
@@ -222,9 +222,9 @@ private:
   std::string rr_name_;
   std::string unique_suffix_;
   bool initialized_;
-  std::map<std::string, LoadExtResource> allocated_external_resources_;
+  std::map<std::string, LoadProcess> allocated_processes_;
   std::unique_ptr<temoto_resource_registrar::ResourceRegistrarRos1> resource_registrar_;
-  std::function<void(LoadExtResource, temoto_resource_registrar::Status)> user_status_callback_ = NULL;
+  std::function<void(LoadProcess, temoto_resource_registrar::Status)> user_status_callback_ = NULL;
 
   /**
    * @brief validateInterface
@@ -233,7 +233,7 @@ private:
   {
     if (!initialized_)
     {
-      TEMOTO_WARN_STREAM_("The External Resource Manager interface is not initialized");
+      TEMOTO_WARN_STREAM_("The  Manager interface is not initialized");
     }
   }
 };

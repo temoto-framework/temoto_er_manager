@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>temoto_er_manager</name>
+  <name>temoto_process_manager</name>
   <version>0.0.0</version>
-  <description>The temoto_er_manager package</description>
+  <description>Process Manager allows to dynamically invoke programs (processes),
+including ROS executables, ROS launch files and regular executables.</description>
 
   <maintainer email="robert.valner@ut.ee">Robert Valner</maintainer>
   <license>Apache-2.0</license>
