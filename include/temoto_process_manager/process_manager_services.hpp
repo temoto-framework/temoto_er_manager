@@ -29,7 +29,8 @@ static bool operator==( const temoto_process_manager::LoadProcess::Request& r1
 			r1.action == r2.action &&
 			r1.package_name == r2.package_name &&
 			r1.executable == r2.executable &&
-			r1.args == r2.args
+			r1.args == r2.args &&
+			r1.ros_namespace == r2.ros_namespace
 		  );
 }
 

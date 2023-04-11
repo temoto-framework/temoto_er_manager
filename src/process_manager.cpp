@@ -178,11 +178,11 @@ while(ros::ok())
     {
       if (srv.request.ros_namespace.empty())
       {
-        cmd += "ROS_NAMESPACE=/" + TEMOTO_LOG_ATTR.getNs() + " ";
+        cmd += "ROS_NAMESPACE=" + TEMOTO_LOG_ATTR.getNs() + " ";
       }
       else
       {
-        cmd += "ROS_NAMESPACE=/" + srv.request.ros_namespace + " ";
+        cmd += "ROS_NAMESPACE=" + srv.request.ros_namespace + " ";
       }
       
       std::regex rx(".*\\.launch$");
