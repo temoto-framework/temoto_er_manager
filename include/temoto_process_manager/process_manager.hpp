@@ -30,7 +30,7 @@ class ProcessManager
 {
 public:
 
-  ProcessManager ();
+  ProcessManager (bool restore_from_catalog);
   virtual ~ProcessManager ();
 
   std::string formatRequest(LoadProcess::Request& req);

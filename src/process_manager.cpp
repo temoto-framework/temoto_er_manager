@@ -27,7 +27,7 @@
 namespace temoto_process_manager
 {
 
-ProcessManager::ProcessManager() 
+ProcessManager::ProcessManager(bool restore_from_catalog) 
 : resource_registrar_(srv_name::MANAGER)
 {
   /*
@@ -53,7 +53,7 @@ ProcessManager::ProcessManager()
   /*
    * Check if this node should be recovered from a previous system failure
    */
-  if (boost::filesystem::exists(rr_catalog_backup_path))
+  if (restore_from_catalog && boost::filesystem::exists(rr_catalog_backup_path))
   {
     resource_registrar_.loadCatalog();
     for (const auto& query : resource_registrar_.getServerQueries<LoadProcess>(srv_name::SERVER))
