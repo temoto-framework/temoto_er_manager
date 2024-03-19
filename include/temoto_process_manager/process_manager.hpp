@@ -17,7 +17,7 @@
 #ifndef TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_H
 #define TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_H
 
-#include "rr/ros1_resource_registrar.h"
+#include "temoto_resource_registrar/ros1_resource_registrar.h"
 #include "temoto_process_manager/process_manager_services.hpp"
 #include <unistd.h>
 #include <mutex>
