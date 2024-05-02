@@ -17,7 +17,7 @@
 #ifndef TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_H
 #define TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_H
 
-#include "temoto_resource_registrar/ros1_resource_registrar.h"
+#include "rr/ros2_resource_registrar.h"
 #include "temoto_process_manager/process_manager_services.hpp"
 #include <unistd.h>
 #include <mutex>
@@ -26,30 +26,41 @@
 
 namespace temoto_process_manager
 {
+
+struct LoadProcess_srv 
+{
+  temoto_process_manager::srv::LoadProcess::Request request;
+  temoto_process_manager::srv::LoadProcess::Response response;
+}; 
+
 class ProcessManager
 {
 public:
 
-  ProcessManager (bool restore_from_catalog);
+  ProcessManager (bool restore_from_catalog, std::shared_ptr<rclcpp::Node> node);
   virtual ~ProcessManager ();
 
-  std::string formatRequest(LoadProcess::Request& req);
-  void formatResponse(LoadProcess::Response &res, int code, std::string message);
-  void loadCb(LoadProcess::Request &req, LoadProcess::Response &res);
-  void unloadCb(LoadProcess::Request &req, LoadProcess::Response &res);
+  std::string formatRequest(temoto_process_manager::srv::LoadProcess::Request& req);
+  void formatResponse(temoto_process_manager::srv::LoadProcess::Response &res, int code, std::string message);
+  void loadCb(temoto_process_manager::srv::LoadProcess::Request &req, temoto_process_manager::srv::LoadProcess::Response &res);
+  void unloadCb(temoto_process_manager::srv::LoadProcess::Request &req, temoto_process_manager::srv::LoadProcess::Response &res);
+  void statusCb(temoto_process_manager::srv::LoadProcess::Request &req, temoto_process_manager::srv::LoadProcess::Response &res, const temoto_resource_registrar::Status &status);
   void resourceLoadLoop();
   void resourceUnloadLoop();
   void resourceStatusLoop();
+
+  std::shared_ptr<temoto_resource_registrar::ResourceRegistrarRos2> resource_registrar_;
+  
 
 private:
 
   // TODO: This section should be replaced by a single container which also holds
   // the state of each process.
-  std::vector<LoadProcess> loading_processes_;
-  std::map<pid_t, LoadProcess> running_processes_;
-  std::map<pid_t, LoadProcess> failed_processes_;
+  std::vector<LoadProcess_srv> loading_processes_;
+  std::map<pid_t, LoadProcess_srv> running_processes_;
+  std::map<pid_t, LoadProcess_srv> failed_processes_;
   std::vector<pid_t> unloading_processes_;
-  std::string catkin_workspace_devel_path_;
+  std::string colcon_workspace_install_path_;
 
   std::thread resource_loading_thread_;  
   std::thread resource_unloading_thread_;
@@ -59,10 +70,9 @@ private:
   std::mutex unloading_mutex_;
   std::mutex running_mutex_;
 
-  ros::NodeHandle nh_;
-
-  temoto_resource_registrar::ResourceRegistrarRos1 resource_registrar_;
   temoto_resource_registrar::Configuration rr_catalog_config_;
+
+  std::shared_ptr<rclcpp::Node> node_;
 
   void waitForLock(std::mutex& m);
   inline bool executableExists (const std::string& name)

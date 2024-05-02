@@ -2,7 +2,7 @@
 #define TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_SERVICES_H
 
 #include <string>
-#include "temoto_process_manager/LoadProcess.h"
+#include "temoto_process_manager/srv/load_process.hpp"
 
 namespace temoto_process_manager
 {
@@ -22,8 +22,8 @@ namespace temoto_process_manager
 // Define the equality operators for load/unload service requests.
 // This will define whether the resource server fires our callback
 // or considers resource already open and returns prevous response.
-static bool operator==( const temoto_process_manager::LoadProcess::Request& r1
-		                  , const temoto_process_manager::LoadProcess::Request& r2 )
+static bool operator==( const temoto_process_manager::srv::LoadProcess::Request& r1
+		                  , const temoto_process_manager::srv::LoadProcess::Request& r2 )
 {
 	return(
 			r1.action == r2.action &&

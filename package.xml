@@ -1,18 +1,32 @@
 <?xml version="1.0"?>
-<package format="2">
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
   <name>temoto_process_manager</name>
   <version>0.0.0</version>
   <description>Process Manager allows to dynamically invoke programs (processes),
 including ROS executables, ROS launch files and regular executables.</description>
-
-  <maintainer email="robert.valner@ut.ee">Robert Valner</maintainer>
+  <maintainer email="fabianparra@utexas.edu">fabian</maintainer>
   <license>Apache-2.0</license>
 
-  <buildtool_depend>catkin</buildtool_depend>
-  <depend>roscpp</depend>
-  <depend>roslib</depend>
-  <depend>std_msgs</depend>
-	<depend>message_generation</depend>
-  <depend>temoto_resource_registrar</depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <build_depend>rosidl_default_generators</build_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>temoto_resource_registrar</depend>
+  <depend>rr_interfaces</depend>
+  <depend>boost</depend>
+
+  
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>
