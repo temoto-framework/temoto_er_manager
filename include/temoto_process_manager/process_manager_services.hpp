@@ -12,11 +12,17 @@ namespace temoto_process_manager
 		const std::string SERVER = "load_external_resource";
 	}
 
-  namespace action
-  {
+    namespace action
+    {
 		const std::string ROS_EXECUTE = "ros_execute";
 		const std::string SYS_EXECUTE = "sys_execute";
-  }
+    }
+
+    struct LoadProcess_srv 
+	{
+		temoto_process_manager::srv::LoadProcess::Request request;
+		temoto_process_manager::srv::LoadProcess::Response response;
+	};
 }
 
 // Define the equality operators for load/unload service requests.

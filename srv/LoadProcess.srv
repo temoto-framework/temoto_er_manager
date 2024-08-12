@@ -1,4 +1,4 @@
-# actions (rosrun or roslaunch) or system command:
+# actions (ros2 run or ros2 launch) or system command:
 string action
 
 # ROS namespace where the program is executed

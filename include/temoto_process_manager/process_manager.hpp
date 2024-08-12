@@ -27,12 +27,6 @@
 namespace temoto_process_manager
 {
 
-struct LoadProcess_srv 
-{
-  temoto_process_manager::srv::LoadProcess::Request request;
-  temoto_process_manager::srv::LoadProcess::Response response;
-}; 
-
 class ProcessManager
 {
 public:
@@ -49,8 +43,9 @@ public:
   void resourceUnloadLoop();
   void resourceStatusLoop();
 
-  std::shared_ptr<temoto_resource_registrar::ResourceRegistrarRos2> resource_registrar_;
-  
+  std::shared_ptr<temoto_resource_registrar::ResourceRegistrarRos2> getResourceRegistrar() const {
+    return resource_registrar_;
+  }
 
 private:
 
@@ -73,8 +68,11 @@ private:
   temoto_resource_registrar::Configuration rr_catalog_config_;
 
   std::shared_ptr<rclcpp::Node> node_;
+  std::shared_ptr<temoto_resource_registrar::ResourceRegistrarRos2> resource_registrar_;
 
   void waitForLock(std::mutex& m);
+  std::string exec(const char* cmd);
+
   inline bool executableExists (const std::string& name)
   {
     struct stat buffer;

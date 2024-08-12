@@ -27,7 +27,7 @@ int main(int argc, char** argv)
    */
   pmi.registerUpdateCallback(resourceFailureCallback);
 
-  auto rr_node = pmi.resource_registrar_->getResourceRegistrarNode();
+  auto rr_node = pmi.getResourceRegistrar()->getRRNode();
   std::thread spinner_thread([&rr_node]() { rclcpp::spin(rr_node); });
 
   /*
@@ -60,8 +60,16 @@ int main(int argc, char** argv)
 
   
   RCLCPP_INFO(node->get_logger(), "Loading rviz");
-  pmi.loadRosResource("rviz2", "rviz2");
+  temoto_process_manager::LoadProcess_srv rviz = pmi.loadRosResource("rviz2", "rviz2");
   std::this_thread::sleep_for(std::chrono::seconds(5));
+  RCLCPP_INFO(node->get_logger(), "Unloading rviz2");
+  pmi.unloadResource(rviz);
+
+  RCLCPP_INFO(node->get_logger(), "Loading teleop_twist_keyboard");
+  temoto_process_manager::LoadProcess_srv teleop_twist_keyboard = pmi.loadRosResource("teleop_twist_keyboard", "teleop_twist_keyboard");
+  std::this_thread::sleep_for(std::chrono::seconds(5));
+  RCLCPP_INFO(node->get_logger(), "Unloading teleop_twist_keyboard");
+  pmi.unloadResource(teleop_twist_keyboard);
 
   /*
    * Note that this time the "unloadResource" was not invoked, as the destructor of "pmi" automatically

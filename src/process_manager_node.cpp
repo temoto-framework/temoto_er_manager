@@ -26,17 +26,12 @@ int main(int argc, char** argv)
   auto node = std::make_shared<rclcpp::Node>("process_manager");
   // auto node = std::make_shared<rclcpp::Node>("process_manager_node", TEMOTO_LOG_ATTR.getSubsystemName());
 
-
   // Create instance of process manager
   auto pm = std::make_shared<temoto_process_manager::ProcessManager>(restore_from_catalog, node);
-  
-
 
   exec.add_node(node);
-  exec.add_node(pm->resource_registrar_->getResourceRegistrarNode());
-  
+  exec.add_node(pm->getResourceRegistrar()->getRRNode());
   exec.spin();
-  // rclcpp::spin(node);
   
   return 0;
 }

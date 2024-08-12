@@ -18,7 +18,6 @@
 #define TEMOTO_PROCESS_MANAGER__PROCESS_MANAGER_INTERFACE_H
 
 #include "rr/ros2_resource_registrar.h"
-// #include <temoto_resource_registrar/rr/ros2_resource_registrar.h>
 #include "temoto_process_manager/process_manager_services.hpp"
 #include <memory>
 #include <ctime>
@@ -26,12 +25,6 @@
 
 namespace temoto_process_manager
 {
-
-struct LoadProcess_srv 
-{
-  temoto_process_manager::srv::LoadProcess::Request request;
-  temoto_process_manager::srv::LoadProcess::Response response;
-}; 
 
 class ProcessManagerInterface
 {
@@ -266,14 +259,17 @@ public:
     return rr_name_;
   }
 
-  // std::unique_ptr<temoto_resource_registrar::ResourceRegistrarRos2> resource_registrar_;
-  std::shared_ptr<temoto_resource_registrar::ResourceRegistrarRos2> resource_registrar_;
+  std::shared_ptr<temoto_resource_registrar::ResourceRegistrarRos2> getResourceRegistrar() const {
+    return resource_registrar_;
+  }
+
 
 private:
   std::string rr_name_;
   std::string unique_suffix_;
   bool initialized_;
   std::map<std::string, LoadProcess_srv> allocated_processes_;
+  std::shared_ptr<temoto_resource_registrar::ResourceRegistrarRos2> resource_registrar_;
   std::function<void(temoto_process_manager::LoadProcess_srv, temoto_resource_registrar::Status)> user_status_callback_ = NULL;
 
   /**

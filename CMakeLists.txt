@@ -28,7 +28,7 @@ include_directories(
     ${rr_interfaces_INCLUDE_DIRS}
     ${temoto_resource_registrar_INCLUDE_DIRS}
     ${temoto_resource_registrar_INCLUDE_DIRS}/rr
-    ${CMAKE_CURRENT_SOURCE_DIR}/include     
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 set(headers
@@ -98,7 +98,11 @@ install(TARGETS pm_client_node
   INCLUDES DESTINATION include/${PROJECT_NAME})
 
   
-  
+# Install headers
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION include/${PROJECT_NAME}
+)
+
 # Install .srv files
 install(DIRECTORY srv
   DESTINATION share/${PROJECT_NAME})

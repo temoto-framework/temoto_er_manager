@@ -22,7 +22,6 @@
 #include <functional>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
-// #include "ros/package.h"
 #include "temoto_process_manager/process_manager.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
@@ -103,7 +102,7 @@ ProcessManager::ProcessManager(bool restore_from_catalog, std::shared_ptr<rclcpp
   /*
    * Find the colcon workspace
    */
-  const std::string current_node_path = ament_index_cpp::get_package_share_directory("temoto_process_manager");  
+  const std::string current_node_path = ament_index_cpp::get_package_share_directory("temoto_process_manager");
   
   std::vector<std::string> current_node_path_tokens;
   boost::split(current_node_path_tokens, current_node_path, boost::is_any_of("/"));
@@ -257,9 +256,6 @@ void ProcessManager::resourceLoadLoop()
         srv.response.pid = pid;
         running_processes_.insert({ pid, srv });
 
-        // std::cout << "\033[1;35m [PM.cpp] running_processes_.insert size \033[0m" << running_processes_.size() << std::endl;
-        // std::cout << "\033[1;35m [PM.cpp] pid \033[0m" << pid << std::endl;
-        
         auto request_ptr = std::make_shared<temoto_process_manager::srv::LoadProcess_Request_<std::allocator<void>>>();
         auto response_ptr = std::make_shared<temoto_process_manager::srv::LoadProcess_Response_<std::allocator<void>>>();
 
@@ -304,22 +300,30 @@ while(rclcpp::ok())
       auto proc_it = running_processes_.find(pid);
       if (proc_it != running_processes_.end())
       {
+        // Check parent pid
+        std::string command = "pgrep -P ";
+        command += std::to_string(pid);
+        std::cout << "\033[1;35m [PM.cpp] command: \033[0m" << command << " = " << exec(command.c_str()) << std::endl;
+        int parent_pid = std::atoi(exec(command.c_str()).c_str());
+
+        pid_t target_pid = (parent_pid != 0) ? parent_pid : pid;
+
         // Kill the process
-        std::cout << "\033[1;33m [PM.cpp] Sending kill(SIGINT) to :  \033[0m\n" << pid << std::endl;
-        TEMOTO_DEBUG_("Sending kill(SIGINT) to %d ...", pid);
-        int ret = kill(pid, SIGINT);
+        std::cout << "\033[1;33m [PM.cpp] Sending kill(SIGINT) to :  \033[0m" << target_pid << std::endl;
+        TEMOTO_DEBUG_("Sending kill(SIGINT) to %d ...", target_pid);
+        int ret = kill(target_pid, SIGINT);
 
         // If SIGINT did not do the trick, then try SIGTERM
         if (ret != 0)
         {
-          std::cout << "\033[1;33m [PM.cpp] Process did not stop successfully  \033[0m\n" << pid << std::endl;
-          TEMOTO_DEBUG_STREAM_("Process with PID=" << pid << " did not stop successfully. " 
+          std::cout << "\033[1;33m [PM.cpp] Process did not stop successfully  \033[0m\n" << parent_pid << std::endl;
+          TEMOTO_DEBUG_STREAM_("Process with PID=" << parent_pid << " did not stop successfully. "
           "Stopping it via SIGTERM.");
-          ret = kill(pid, SIGTERM);
+          ret = kill(target_pid, SIGTERM);
         }
         else
         {
-          std::cout << "\033[1;33m [PM.cpp] Process with PID= :  \033[0m\n" << pid << " was stopped successfully" << std::endl;
+          std::cout << "\033[1;33m [PM.cpp] Process with PID= :  \033[0m" << pid << " was stopped successfully" << std::endl;
           TEMOTO_DEBUG_STREAM_("Process with PID=" << pid << " was stopped successfully.");
         }
         
@@ -530,4 +534,18 @@ void ProcessManager::waitForLock(std::mutex& m)
     rclcpp::sleep_for(std::chrono::milliseconds(100)); // sleep for few ms
   }
 }
+
+std::string ProcessManager::exec(const char* cmd) {
+  std::array<char, 128> buffer;
+  std::string result;
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+  if (!pipe) {
+      throw std::runtime_error("popen() failed!");
+  }
+  while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr) {
+      result += buffer.data();
+  }
+  return result;
+}
+
 }  // namespace temoto_process_manager

@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>Process Manager allows to dynamically invoke programs (processes),
 including ROS executables, ROS launch files and regular executables.</description>
-  <maintainer email="fabianparra@utexas.edu">fabian</maintainer>
+  <maintainer email="fabianparra@utexas.edu">Fabian Parra</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
